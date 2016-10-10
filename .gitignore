@@ -20,3 +20,9 @@ target
 
 # git
 *.orig
+
+# build related
+apollo-portal.jar
+apollo-service.jar
+*.log
+*.pid

@@ -34,7 +34,7 @@ CLIENT_JAR=$CLIENT_DIR/apollo-demo.jar
 
 function checkServerAlive {
   declare -i counter=0
-  declare -i max_counter=12 # 12*5=60s
+  declare -i max_counter=24 # 24*5=120s
   declare -i total_time=0
 
   SERVER_URL="$1"
