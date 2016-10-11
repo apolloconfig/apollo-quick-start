@@ -19,7 +19,8 @@ eureka_service_url=$config_server_url/eureka/
 portal_url=http://localhost:8070
 
 # JAVA OPTS
-export BASE_JAVA_OPTS="-Denv=dev -Dspring.profiles.active=dev -Deureka.service.url=$eureka_service_url -Ddev_meta=$config_server_url"
+BASE_JAVA_OPTS="-Denv=dev -Ddev_meta=$config_server_url"
+SERVER_JAVA_OPTS="$BASE_JAVA_OPTS -Dspring.profiles.active=dev -Deureka.service.url=$eureka_service_url"
 
 # executable
 JAR_FILE=apollo-all-in-one.jar
@@ -31,6 +32,25 @@ PORTAL_JAR_NAME=apollo-portal.jar
 PORTAL_JAR=$PORTAL_DIR/$PORTAL_JAR_NAME
 CLIENT_DIR=./client
 CLIENT_JAR=$CLIENT_DIR/apollo-demo.jar
+
+function checkJava {
+  if type -p java > /dev/null; then
+    _java=java
+  elif [[ -n "$JAVA_HOME" ]] && [[ -x "$JAVA_HOME/bin/java" ]];  then
+      _java="$JAVA_HOME/bin/java"
+  else
+      echo "Could not find java executable, please check PATH and JAVA_HOME variables."
+      exit 1
+  fi
+
+  if [[ "$_java" ]]; then
+      version=$("$_java" -version 2>&1 | awk -F '"' '/version/ {print $2}')
+      if [[ "$version" < "1.8" ]]; then
+          echo "Java version is $version, please make sure java 1.8+ is in the path"
+          exit 1
+      fi
+  fi
+}
 
 function checkServerAlive {
   declare -i counter=0
@@ -56,9 +76,11 @@ function checkServerAlive {
   return 0
 }
 
+checkJava
+
 if [ "$1" = "start" ] ; then
   echo "==== starting service ===="
-  export JAVA_OPTS="$BASE_JAVA_OPTS -Dspring.datasource.url=$apollo_config_db_url -Dspring.datasource.username=$apollo_config_db_username -Dspring.datasource.password=$apollo_config_db_password"
+  export JAVA_OPTS="$SERVER_JAVA_OPTS -Dspring.datasource.url=$apollo_config_db_url -Dspring.datasource.username=$apollo_config_db_username -Dspring.datasource.password=$apollo_config_db_password"
 
   if [[ -f $SERVICE_JAR ]]; then
     rm -rf $SERVICE_JAR
@@ -72,7 +94,7 @@ if [ "$1" = "start" ] ; then
   rc=$?
   if [[ $rc != 0 ]];
   then
-    echo "Failed to start service, return code: $rc"
+    echo "Failed to start service, return code: $rc. Please check log files under service folder."
     exit $rc;
   fi
 
@@ -82,7 +104,7 @@ if [ "$1" = "start" ] ; then
   rc=$?
   if [[ $rc != 0 ]];
   then
-    printf "\nConfig service failed to start in $rc seconds!\n"
+    printf "\nConfig service failed to start in $rc seconds! Please check log files under service folder.\n"
     exit 1;
   fi
 
@@ -94,14 +116,14 @@ if [ "$1" = "start" ] ; then
   rc=$?
   if [[ $rc != 0 ]];
   then
-    printf "\nAdmin service failed to start in $rc seconds!\n"
+    printf "\nAdmin service failed to start in $rc seconds! Please check log files under service folder.\n"
     exit 1;
   fi
 
   printf "\nAdmin service started\n"
 
   echo "==== starting portal ===="
-  export JAVA_OPTS="$BASE_JAVA_OPTS -Dserver.port=8070 -Dspring.datasource.url=$apollo_portal_db_url -Dspring.datasource.username=$apollo_portal_db_username -Dspring.datasource.password=$apollo_portal_db_password"
+  export JAVA_OPTS="$SERVER_JAVA_OPTS -Dserver.port=8070 -Dspring.datasource.url=$apollo_portal_db_url -Dspring.datasource.username=$apollo_portal_db_username -Dspring.datasource.password=$apollo_portal_db_password"
 
   if [[ -f $PORTAL_JAR ]]; then
     rm -rf $PORTAL_JAR
@@ -125,7 +147,7 @@ if [ "$1" = "start" ] ; then
   rc=$?
   if [[ $rc != 0 ]];
   then
-    printf "\nPortal failed to start in $rc seconds!\n"
+    printf "\nPortal failed to start in $rc seconds! Please check log files under portal folder.\n"
     exit 1;
   fi
 
