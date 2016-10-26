@@ -24,9 +24,9 @@ Java HotSpot(TM) 64-Bit Server VM (build 25.74-b02, mixed mode)
 
 ## 1.2 MySQL
 
-* 版本要求：5.5+
+* 版本要求：5.6.5+
 
-Apollo的表结构使用了`utf8mb4`，所以需要5.5以上版本。
+Apollo的表结构使用了多个on update语句，所以需要5.6.5以上版本。
 
 连接上MySQL后，可以通过如下命令检查：
 ```
