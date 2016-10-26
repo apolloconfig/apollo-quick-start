@@ -15,9 +15,9 @@ Use ApolloConfigDB;
 # Dump of table app
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `app`;
+DROP TABLE IF EXISTS `App`;
 
-CREATE TABLE `app` (
+CREATE TABLE `App` (
   `Id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT '主键',
   `AppId` varchar(500) NOT NULL DEFAULT 'default' COMMENT 'AppID',
   `Name` varchar(500) NOT NULL DEFAULT 'default' COMMENT '应用名',
@@ -41,9 +41,9 @@ CREATE TABLE `app` (
 # Dump of table appnamespace
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `appnamespace`;
+DROP TABLE IF EXISTS `AppNamespace`;
 
-CREATE TABLE `appnamespace` (
+CREATE TABLE `AppNamespace` (
   `Id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增主键',
   `Name` varchar(32) NOT NULL DEFAULT '' COMMENT 'namespace名字，注意，需要全局唯一',
   `AppId` varchar(32) NOT NULL DEFAULT '' COMMENT 'app id',
@@ -65,9 +65,9 @@ CREATE TABLE `appnamespace` (
 # Dump of table audit
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `audit`;
+DROP TABLE IF EXISTS `Audit`;
 
-CREATE TABLE `audit` (
+CREATE TABLE `Audit` (
   `Id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT '主键',
   `EntityName` varchar(50) NOT NULL DEFAULT 'default' COMMENT '表名',
   `EntityId` int(10) unsigned DEFAULT NULL COMMENT '记录ID',
@@ -87,9 +87,9 @@ CREATE TABLE `audit` (
 # Dump of table cluster
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `cluster`;
+DROP TABLE IF EXISTS `Cluster`;
 
-CREATE TABLE `cluster` (
+CREATE TABLE `Cluster` (
   `Id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增主键',
   `Name` varchar(32) NOT NULL DEFAULT '' COMMENT '集群名字',
   `AppId` varchar(32) NOT NULL DEFAULT '' COMMENT 'App id',
@@ -108,9 +108,9 @@ CREATE TABLE `cluster` (
 # Dump of table commit
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `commit`;
+DROP TABLE IF EXISTS `Commit`;
 
-CREATE TABLE `commit` (
+CREATE TABLE `Commit` (
   `Id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT '主键',
   `ChangeSets` longtext NOT NULL COMMENT '修改变更集',
   `AppId` varchar(500) NOT NULL DEFAULT 'default' COMMENT 'AppID',
@@ -134,9 +134,9 @@ CREATE TABLE `commit` (
 # Dump of table instance
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `instance`;
+DROP TABLE IF EXISTS `Instance`;
 
-CREATE TABLE `instance` (
+CREATE TABLE `Instance` (
   `Id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增Id',
   `AppId` varchar(32) NOT NULL DEFAULT 'default' COMMENT 'AppID',
   `ClusterName` varchar(32) NOT NULL DEFAULT 'default' COMMENT 'ClusterName',
@@ -155,9 +155,9 @@ CREATE TABLE `instance` (
 # Dump of table instanceconfig
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `instanceconfig`;
+DROP TABLE IF EXISTS `InstanceConfig`;
 
-CREATE TABLE `instanceconfig` (
+CREATE TABLE `InstanceConfig` (
   `Id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增Id',
   `InstanceId` int(11) unsigned DEFAULT NULL COMMENT 'Instance Id',
   `ConfigAppId` varchar(32) NOT NULL DEFAULT 'default' COMMENT 'Config App Id',
@@ -178,9 +178,9 @@ CREATE TABLE `instanceconfig` (
 # Dump of table item
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `item`;
+DROP TABLE IF EXISTS `Item`;
 
-CREATE TABLE `item` (
+CREATE TABLE `Item` (
   `Id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增Id',
   `NamespaceId` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '集群NamespaceId',
   `Key` varchar(128) NOT NULL DEFAULT 'default' COMMENT '配置项Key',
@@ -202,9 +202,9 @@ CREATE TABLE `item` (
 # Dump of table namespace
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `namespace`;
+DROP TABLE IF EXISTS `Namespace`;
 
-CREATE TABLE `namespace` (
+CREATE TABLE `Namespace` (
   `Id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增主键',
   `AppId` varchar(500) NOT NULL DEFAULT 'default' COMMENT 'AppID',
   `ClusterName` varchar(500) NOT NULL DEFAULT 'default' COMMENT 'Cluster Name',
@@ -224,9 +224,9 @@ CREATE TABLE `namespace` (
 # Dump of table namespacelock
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `namespacelock`;
+DROP TABLE IF EXISTS `NamespaceLock`;
 
-CREATE TABLE `namespacelock` (
+CREATE TABLE `NamespaceLock` (
   `Id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增id',
   `NamespaceId` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '集群NamespaceId',
   `DataChange_CreatedBy` varchar(32) NOT NULL DEFAULT 'default' COMMENT '创建人邮箱前缀',
@@ -244,9 +244,9 @@ CREATE TABLE `namespacelock` (
 # Dump of table privilege
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `privilege`;
+DROP TABLE IF EXISTS `Privilege`;
 
-CREATE TABLE `privilege` (
+CREATE TABLE `Privilege` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT '主键',
   `Name` varchar(500) NOT NULL DEFAULT 'default' COMMENT 'Name',
   `PrivilType` varchar(50) NOT NULL DEFAULT 'default' COMMENT 'PrivilType',
@@ -266,9 +266,9 @@ CREATE TABLE `privilege` (
 # Dump of table release
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `release`;
+DROP TABLE IF EXISTS `Release`;
 
-CREATE TABLE `release` (
+CREATE TABLE `Release` (
   `Id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增主键',
   `ReleaseKey` varchar(64) NOT NULL DEFAULT '' COMMENT '发布的Key',
   `Name` varchar(64) NOT NULL DEFAULT 'default' COMMENT '发布名字',
@@ -295,9 +295,9 @@ CREATE TABLE `release` (
 # Dump of table releasemessage
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `releasemessage`;
+DROP TABLE IF EXISTS `ReleaseMessage`;
 
-CREATE TABLE `releasemessage` (
+CREATE TABLE `ReleaseMessage` (
   `Id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增主键',
   `Message` varchar(1024) NOT NULL DEFAULT '' COMMENT '发布的消息内容',
   `DataChange_LastTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后修改时间',
@@ -311,9 +311,9 @@ CREATE TABLE `releasemessage` (
 # Dump of table serverconfig
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `serverconfig`;
+DROP TABLE IF EXISTS `ServerConfig`;
 
-CREATE TABLE `serverconfig` (
+CREATE TABLE `ServerConfig` (
   `Id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增Id',
   `Key` varchar(64) NOT NULL DEFAULT 'default' COMMENT '配置项Key',
   `Cluster` varchar(32) NOT NULL DEFAULT 'default' COMMENT '配置对应的集群，default为不针对特定的集群',
@@ -331,7 +331,7 @@ CREATE TABLE `serverconfig` (
 
 # Config
 # ------------------------------------------------------------
-INSERT INTO `serverconfig` (`Key`, `Cluster`, `Value`, `Comment`)
+INSERT INTO `ServerConfig` (`Key`, `Cluster`, `Value`, `Comment`)
 VALUES
     ('eureka.service.url', 'default', 'http://localhost:8080/eureka/', 'Eureka服务Url'),
     ('namespace.lock.switch', 'default', 'false', '一次发布只能有一个人修改开关'),
@@ -341,28 +341,28 @@ VALUES
 
 # Sample Data
 # ------------------------------------------------------------
-INSERT INTO `app` (`AppId`, `Name`, `OrgId`, `OrgName`, `OwnerName`, `OwnerEmail`)
+INSERT INTO `App` (`AppId`, `Name`, `OrgId`, `OrgName`, `OwnerName`, `OwnerEmail`)
 VALUES
 	('SampleApp', 'Sample App', 'TEST1', '样例部门1', 'apollo', 'apollo@acme.com');
 
-INSERT INTO `appnamespace` (`Name`, `AppId`, `Format`, `IsPublic`, `Comment`)
+INSERT INTO `AppNamespace` (`Name`, `AppId`, `Format`, `IsPublic`, `Comment`)
 VALUES
 	('application', 'SampleApp', 'properties', 0, 'default app namespace');
 
-INSERT INTO `cluster` (`Name`, `AppId`)
+INSERT INTO `Cluster` (`Name`, `AppId`)
 VALUES
 	('default', 'SampleApp');
 
-INSERT INTO `namespace` (`Id`, `AppId`, `ClusterName`, `NamespaceName`)
+INSERT INTO `Namespace` (`Id`, `AppId`, `ClusterName`, `NamespaceName`)
 VALUES
 	(1, 'SampleApp', 'default', 'application');
 
 
-INSERT INTO `item` (`NamespaceId`, `Key`, `Value`, `Comment`, `LineNum`)
+INSERT INTO `Item` (`NamespaceId`, `Key`, `Value`, `Comment`, `LineNum`)
 VALUES
 	(1, 'timeout', '100', 'sample timeout配置', 1);
 
-INSERT INTO `release` (`ReleaseKey`, `Name`, `Comment`, `AppId`, `ClusterName`, `NamespaceName`, `Configurations`)
+INSERT INTO `Release` (`ReleaseKey`, `Name`, `Comment`, `AppId`, `ClusterName`, `NamespaceName`, `Configurations`)
 VALUES
 	('20161009155425-d3a0749c6e20bc15', '20161009155424-release', 'Sample发布', 'SampleApp', 'default', 'application', '{\"timeout\":\"100\"}');
 
