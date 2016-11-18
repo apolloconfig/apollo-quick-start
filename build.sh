@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # apollo config db info
 apollo_config_db_url=jdbc:mysql://localhost:3306/ApolloConfigDB?characterEncoding=utf8
