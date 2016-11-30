@@ -27,9 +27,11 @@ JAR_FILE=apollo-all-in-one.jar
 SERVICE_DIR=./service
 SERVICE_JAR_NAME=apollo-service.jar
 SERVICE_JAR=$SERVICE_DIR/$SERVICE_JAR_NAME
+SERVICE_LOG=$SERVICE_DIR/apollo-service.log
 PORTAL_DIR=./portal
 PORTAL_JAR_NAME=apollo-portal.jar
 PORTAL_JAR=$PORTAL_DIR/$PORTAL_JAR_NAME
+PORTAL_LOG=$PORTAL_DIR/apollo-portal.log
 CLIENT_DIR=./client
 CLIENT_JAR=$CLIENT_DIR/apollo-demo.jar
 CLIENT_LIB_DIR=./client/lib
@@ -82,7 +84,8 @@ checkJava
 
 if [ "$1" = "start" ] ; then
   echo "==== starting service ===="
-  export JAVA_OPTS="$SERVER_JAVA_OPTS -Dspring.datasource.url=$apollo_config_db_url -Dspring.datasource.username=$apollo_config_db_username -Dspring.datasource.password=$apollo_config_db_password"
+  echo "Service logging file is $SERVICE_LOG"
+  export JAVA_OPTS="$SERVER_JAVA_OPTS -Dlogging.file=./apollo-service.log -Dspring.datasource.url=$apollo_config_db_url -Dspring.datasource.username=$apollo_config_db_username -Dspring.datasource.password=$apollo_config_db_password"
 
   if [[ -f $SERVICE_JAR ]]; then
     rm -rf $SERVICE_JAR
@@ -96,7 +99,7 @@ if [ "$1" = "start" ] ; then
   rc=$?
   if [[ $rc != 0 ]];
   then
-    echo "Failed to start service, return code: $rc. Please check log files under service folder."
+    echo "Failed to start service, return code: $rc. Please check $SERVICE_LOG for more information."
     exit $rc;
   fi
 
@@ -106,7 +109,7 @@ if [ "$1" = "start" ] ; then
   rc=$?
   if [[ $rc != 0 ]];
   then
-    printf "\nConfig service failed to start in $rc seconds! Please check log files under service folder.\n"
+    printf "\nConfig service failed to start in $rc seconds! Please check $SERVICE_LOG for more information.\n"
     exit 1;
   fi
 
@@ -118,14 +121,15 @@ if [ "$1" = "start" ] ; then
   rc=$?
   if [[ $rc != 0 ]];
   then
-    printf "\nAdmin service failed to start in $rc seconds! Please check log files under service folder.\n"
+    printf "\nAdmin service failed to start in $rc seconds! Please check $SERVICE_LOG for more information.\n"
     exit 1;
   fi
 
   printf "\nAdmin service started\n"
 
   echo "==== starting portal ===="
-  export JAVA_OPTS="$SERVER_JAVA_OPTS -Dserver.port=8070 -Dspring.datasource.url=$apollo_portal_db_url -Dspring.datasource.username=$apollo_portal_db_username -Dspring.datasource.password=$apollo_portal_db_password"
+  echo "Portal logging file is $PORTAL_LOG"
+  export JAVA_OPTS="$SERVER_JAVA_OPTS -Dlogging.file=./apollo-portal.log -Dserver.port=8070 -Dspring.datasource.url=$apollo_portal_db_url -Dspring.datasource.username=$apollo_portal_db_username -Dspring.datasource.password=$apollo_portal_db_password"
 
   if [[ -f $PORTAL_JAR ]]; then
     rm -rf $PORTAL_JAR
@@ -139,7 +143,7 @@ if [ "$1" = "start" ] ; then
   rc=$?
   if [[ $rc != 0 ]];
   then
-    echo "Failed to start portal, return code: $rc"
+    echo "Failed to start portal, return code: $rc. Please check $PORTAL_LOG for more information."
     exit $rc;
   fi
 
@@ -149,7 +153,7 @@ if [ "$1" = "start" ] ; then
   rc=$?
   if [[ $rc != 0 ]];
   then
-    printf "\nPortal failed to start in $rc seconds! Please check log files under portal folder.\n"
+    printf "\nPortal failed to start in $rc seconds! Please check $PORTAL_LOG for more information.\n"
     exit 1;
   fi
 
