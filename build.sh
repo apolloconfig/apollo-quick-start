@@ -34,8 +34,6 @@ PORTAL_JAR=$PORTAL_DIR/$PORTAL_JAR_NAME
 PORTAL_LOG=$PORTAL_DIR/apollo-portal.log
 CLIENT_DIR=./client
 CLIENT_JAR=$CLIENT_DIR/apollo-demo.jar
-CLIENT_LIB_DIR=./client/lib
-CLIENT_BUILD_TOOL_JAR=$CLIENT_LIB_DIR/apollo-buildtools.jar
 
 function checkJava {
   if type -p java > /dev/null; then
@@ -161,8 +159,8 @@ if [ "$1" = "start" ] ; then
 
   exit 0;
 elif [ "$1" = "client" ] ; then
-  java -classpath $CLIENT_DIR:$CLIENT_JAR:$CLIENT_LIB_DIR:$CLIENT_BUILD_TOOL_JAR $BASE_JAVA_OPTS SimpleApolloConfigDemo
-
+  java -classpath $CLIENT_DIR:$CLIENT_JAR $BASE_JAVA_OPTS SimpleApolloConfigDemo
+  #For Windows, use java -classpath "$CLIENT_DIR;$CLIENT_JAR" $BASE_JAVA_OPTS SimpleApolloConfigDemo
   exit 0;
 elif [ "$1" = "stop" ] ; then
   echo "==== stopping portal ===="
