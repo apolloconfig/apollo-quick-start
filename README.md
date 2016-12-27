@@ -45,7 +45,7 @@ SHOW VARIABLES WHERE Variable_name = 'version';
 1. 从Github下载
     * checkout或下载[apollo-build-scripts项目](https://github.com/nobodyiam/apollo-build-scripts)
 2. 从百度网盘下载
-    * 通过[网盘链接](https://pan.baidu.com/s/1pL8MTqb)下载
+    * 通过[网盘链接](https://pan.baidu.com/s/1pKCE9C3)下载
     * 下载到本地后，在本地解压apollo-build-scripts.zip
 3. 为啥安装包要64M这么大？
     * 因为这是一个可以自启动的jar包，里面包含了所有依赖jar包以及一个内置的tomcat容器
