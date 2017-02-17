@@ -1,5 +1,15 @@
 #!/bin/bash
 
+if [ "$(uname)" == "Darwin" ]; then
+    windows="0"
+elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
+    windows="0"
+elif [ "$(expr substr $(uname -s) 1 5)" == "MINGW" ]; then
+    windows="1"
+else
+    windows="0"
+fi
+
 # apollo config db info
 apollo_config_db_url=jdbc:mysql://localhost:3306/ApolloConfigDB?characterEncoding=utf8
 apollo_config_db_username=root
@@ -36,10 +46,15 @@ CLIENT_DIR=./client
 CLIENT_JAR=$CLIENT_DIR/apollo-demo.jar
 
 function checkJava {
-  if type -p java > /dev/null; then
-    _java=java
-  elif [[ -n "$JAVA_HOME" ]] && [[ -x "$JAVA_HOME/bin/java" ]];  then
+  if [[ -n "$JAVA_HOME" ]] && [[ -x "$JAVA_HOME/bin/java" ]];  then
+      if [ "$windows" == "1" ]; then
+        TMP=`cygpath -sw "$JAVA_HOME"`
+        export JAVA_HOME=`cygpath -u $TMP`
+        echo "Windows new JAVA_HOME is: $JAVA_HOME"
+      fi
       _java="$JAVA_HOME/bin/java"
+  elif type -p java > /dev/null; then
+    _java=java
   else
       echo "Could not find java executable, please check PATH and JAVA_HOME variables."
       exit 1
@@ -159,8 +174,11 @@ if [ "$1" = "start" ] ; then
 
   exit 0;
 elif [ "$1" = "client" ] ; then
-  java -classpath $CLIENT_DIR:$CLIENT_JAR $BASE_JAVA_OPTS SimpleApolloConfigDemo
-  #For Windows, use java -classpath "$CLIENT_DIR;$CLIENT_JAR" $BASE_JAVA_OPTS SimpleApolloConfigDemo
+  if [ "$windows" == "1" ]; then
+    java -classpath "$CLIENT_DIR;$CLIENT_JAR" $BASE_JAVA_OPTS SimpleApolloConfigDemo
+  else
+    java -classpath $CLIENT_DIR:$CLIENT_JAR $BASE_JAVA_OPTS SimpleApolloConfigDemo
+  fi
   exit 0;
 elif [ "$1" = "stop" ] ; then
   echo "==== stopping portal ===="
