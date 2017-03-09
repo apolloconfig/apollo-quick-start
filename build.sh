@@ -1,15 +1,5 @@
 #!/bin/bash
 
-if [ "$(uname)" == "Darwin" ]; then
-    windows="0"
-elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
-    windows="0"
-elif [ "$(expr substr $(uname -s) 1 5)" == "MINGW" ]; then
-    windows="1"
-else
-    windows="0"
-fi
-
 # apollo config db info
 apollo_config_db_url=jdbc:mysql://localhost:3306/ApolloConfigDB?characterEncoding=utf8
 apollo_config_db_username=root
@@ -21,6 +11,16 @@ apollo_portal_db_username=root
 apollo_portal_db_password=
 
 # =============== Please do not modify the following content =============== #
+
+if [ "$(uname)" == "Darwin" ]; then
+    windows="0"
+elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
+    windows="0"
+elif [ "$(expr substr $(uname -s) 1 5)" == "MINGW" ]; then
+    windows="1"
+else
+    windows="0"
+fi
 
 # meta server url
 config_server_url=http://localhost:8080
