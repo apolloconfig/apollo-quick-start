@@ -107,7 +107,7 @@ if [ "$1" = "start" ] ; then
   ln $JAR_FILE $SERVICE_JAR
   chmod a+x $SERVICE_JAR
 
-  $SERVICE_JAR start --configservice --adminservice
+  nohup $SERVICE_JAR start --configservice --adminservice &
 
   rc=$?
   if [[ $rc != 0 ]];
@@ -151,7 +151,7 @@ if [ "$1" = "start" ] ; then
   ln $JAR_FILE $PORTAL_JAR
   chmod a+x $PORTAL_JAR
 
-  $PORTAL_JAR start --portal
+  nohup $PORTAL_JAR start --portal &
 
   rc=$?
   if [[ $rc != 0 ]];
