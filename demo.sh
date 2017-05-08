@@ -193,7 +193,7 @@ elif [ "$1" = "stop" ] ; then
 
   exit 0;
 else
-  echo "Usage: build.sh ( commands ... )"
+  echo "Usage: demo.sh ( commands ... )"
   echo "commands:"
   echo "  start         start services and portal"
   echo "  client        start client demo program"

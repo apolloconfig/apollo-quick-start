@@ -99,7 +99,7 @@ select `NamespaceId`, `Key`, `Value`, `Comment` from ApolloConfigDB.Item;
 | 1           | timeout | 100   | sample timeout配置 |
 
 ## 2.2 配置数据库连接信息
-Apollo服务端需要知道如何连接到你前面创建的数据库，所以需要编辑[build.sh](https://github.com/nobodyiam/apollo-build-scripts/blob/master/build.sh)，修改ApolloPortalDB和ApolloConfigDB相关的数据库连接串信息。
+Apollo服务端需要知道如何连接到你前面创建的数据库，所以需要编辑[demo.sh](https://github.com/nobodyiam/apollo-build-scripts/blob/master/demo.sh)，修改ApolloPortalDB和ApolloConfigDB相关的数据库连接串信息。
 
 > 注意：填入的用户需要具备对ApolloPortalDB和ApolloConfigDB数据的读写权限。
 
@@ -115,7 +115,7 @@ apollo_portal_db_username=用户名
 apollo_portal_db_password=密码（如果没有密码，留空即可）
 ```
 
-> 注意：不要修改build.sh的其它部分
+> 注意：不要修改demo.sh的其它部分
 
 # 三、启动Apollo配置中心
 ## 3.1 确保端口未被占用
@@ -128,7 +128,7 @@ lsof -i:8080
 
 ## 3.2 执行启动脚本
 ```sh
-./build.sh start
+./demo.sh start
 ```
 
 当看到如下输出后，就说明启动成功了！
@@ -173,7 +173,7 @@ Portal started. You can visit http://localhost:8070 now!
 
 同时，客户端还会监听配置变化事件，一旦有变化就会输出变化的配置信息。
 
-运行`./build.sh client`启动Demo客户端，忽略前面的调试信息，可以看到如下提示：
+运行`./demo.sh client`启动Demo客户端，忽略前面的调试信息，可以看到如下提示：
 ```sh
 Apollo Config Demo. Please input key to get the value. Input quit to exit.
 >
@@ -228,4 +228,4 @@ Apollo Config Demo. Please input key to get the value. Input quit to exit.
 ```properties
 app.id=你的appId
 ```
-运行`./build.sh client`启动Demo客户端即可。
+运行`./demo.sh client`启动Demo客户端即可。
