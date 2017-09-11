@@ -165,7 +165,7 @@ Portal started. You can visit http://localhost:8070 now!
 > 如果提示`系统出错，请重试或联系系统负责人`，请稍后几秒钟重试一下，因为通过Eureka注册的服务有一个刷新的延时。
 
 ### 4.1.2 运行客户端程序
-我们准备了一个简单的[Demo客户端](https://github.com/ctripcorp/apollo/blob/master/apollo-demo/src/main/java/SimpleApolloConfigDemo.java)来演示从Apollo配置中心获取配置。
+我们准备了一个简单的[Demo客户端](https://github.com/ctripcorp/apollo/blob/master/apollo-demo/src/main/java/com/ctrip/framework/apollo/demo/api/SimpleApolloConfigDemo.java)来演示从Apollo配置中心获取配置。
 
 程序很简单，就是用户输入一个key的名字，程序会输出这个key对应的值。
 
