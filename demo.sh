@@ -30,7 +30,8 @@ portal_url=http://localhost:8070
 
 # JAVA OPTS
 BASE_JAVA_OPTS="-Denv=dev -Ddev_meta=$config_server_url"
-SERVER_JAVA_OPTS="$BASE_JAVA_OPTS -Dspring.profiles.active=dev -Deureka.service.url=$eureka_service_url"
+SERVER_JAVA_OPTS="$BASE_JAVA_OPTS -Dspring.profiles.active=github -Deureka.service.url=$eureka_service_url"
+PORTAL_JAVA_OPTS="$BASE_JAVA_OPTS -Dspring.profiles.active=github,auth"
 
 # executable
 JAR_FILE=apollo-all-in-one.jar
@@ -142,7 +143,7 @@ if [ "$1" = "start" ] ; then
 
   echo "==== starting portal ===="
   echo "Portal logging file is $PORTAL_LOG"
-  export JAVA_OPTS="$SERVER_JAVA_OPTS -Dlogging.file=./apollo-portal.log -Dserver.port=8070 -Dspring.datasource.url=$apollo_portal_db_url -Dspring.datasource.username=$apollo_portal_db_username -Dspring.datasource.password=$apollo_portal_db_password"
+  export JAVA_OPTS="$PORTAL_JAVA_OPTS -Dlogging.file=./apollo-portal.log -Dserver.port=8070 -Dspring.datasource.url=$apollo_portal_db_url -Dspring.datasource.username=$apollo_portal_db_username -Dspring.datasource.password=$apollo_portal_db_password"
 
   if [[ -f $PORTAL_JAR ]]; then
     rm -rf $PORTAL_JAR
