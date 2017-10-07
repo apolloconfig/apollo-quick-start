@@ -152,14 +152,26 @@ Portal started. You can visit http://localhost:8070 now!
 
 > 注：在启动apollo-configservice的过程中会在日志中输出eureka注册失败的信息，如`com.sun.jersey.api.client.ClientHandlerException: java.net.ConnectException: Connection refused`。需要注意的是，这个是预期的情况，因为apollo-configservice需要向Meta Server（它自己）注册服务，但是因为在启动过程中，自己还没起来，所以会报这个错。后面会进行重试的动作，所以等自己服务起来后就会注册正常了。
 
+## 3.4 注意
+Quick Start只是用来帮助大家快速体验Apollo项目，具体实际使用时请参考：[分布式部署指南](https://github.com/ctripcorp/apollo/wiki/%E5%88%86%E5%B8%83%E5%BC%8F%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97)。
+
+另外需要注意的是Quick Start不支持增加环境，只有通过自己部署源码打出来的包才可以新增环境，同样请参考：[分布式部署指南](https://github.com/ctripcorp/apollo/wiki/%E5%88%86%E5%B8%83%E5%BC%8F%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97)
+
 # 四、使用Apollo配置中心
 ## 4.1 使用样例项目
 
 ### 4.1.1 查看样例配置
 1. 打开http://localhost:8070
+
+> Quick Start集成了[Spring Security简单认证](https://github.com/ctripcorp/apollo/wiki/Portal-%E5%AE%9E%E7%8E%B0%E7%94%A8%E6%88%B7%E7%99%BB%E5%BD%95%E5%8A%9F%E8%83%BD#%E5%AE%9E%E7%8E%B0%E6%96%B9%E5%BC%8F%E4%B8%80%E4%BD%BF%E7%94%A8apollo%E6%8F%90%E4%BE%9B%E7%9A%84spring-security%E7%AE%80%E5%8D%95%E8%AE%A4%E8%AF%81)，更多信息可以参考[Portal 实现用户登录功能](https://github.com/ctripcorp/apollo/wiki/Portal-%E5%AE%9E%E7%8E%B0%E7%94%A8%E6%88%B7%E7%99%BB%E5%BD%95%E5%8A%9F%E8%83%BD)
+
+<img src="https://github.com/nobodyiam/apollo-build-scripts/raw/master/images/apollo-login.png" alt="登录" width="640px">
+
+2. 输入用户名apollo，密码admin后登录
+
 ![首页](https://github.com/nobodyiam/apollo-build-scripts/blob/master/images/apollo-sample-home.png)
 
-2. 点击SampleApp进入配置界面，可以看到当前有一个配置timeout=100
+3. 点击SampleApp进入配置界面，可以看到当前有一个配置timeout=100
 ![配置界面](https://github.com/nobodyiam/apollo-build-scripts/blob/master/images/sample-app-config.png)
 
 > 如果提示`系统出错，请重试或联系系统负责人`，请稍后几秒钟重试一下，因为通过Eureka注册的服务有一个刷新的延时。
@@ -219,7 +231,7 @@ Apollo Config Demo. Please input key to get the value. Input quit to exit.
 
 ## 4.2 使用新的项目
 ### 4.2.1 应用接入Apollo
-这部分可以参考[普通应用接入指南](https://github.com/ctripcorp/apollo/wiki/%E5%BA%94%E7%94%A8%E6%8E%A5%E5%85%A5%E6%8C%87%E5%8D%97#%E4%B8%80%E6%99%AE%E9%80%9A%E5%BA%94%E7%94%A8%E6%8E%A5%E5%85%A5%E6%8C%87%E5%8D%97)
+这部分可以参考[Java应用接入指南](https://github.com/ctripcorp/apollo/wiki/Java%E5%AE%A2%E6%88%B7%E7%AB%AF%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97)
 
 ### 4.2.2 运行客户端程序
 由于使用了新的项目，所以客户端需要修改appId信息。
