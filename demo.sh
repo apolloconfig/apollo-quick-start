@@ -46,6 +46,9 @@ PORTAL_LOG=$PORTAL_DIR/apollo-portal.log
 CLIENT_DIR=./client
 CLIENT_JAR=$CLIENT_DIR/apollo-demo.jar
 
+# go to script directory
+cd "${0%/*}"
+
 function checkJava {
   if [[ -n "$JAVA_HOME" ]] && [[ -x "$JAVA_HOME/bin/java" ]];  then
       if [ "$windows" == "1" ]; then
@@ -180,7 +183,7 @@ elif [ "$1" = "client" ] ; then
   else
     java -classpath $CLIENT_DIR:$CLIENT_JAR $BASE_JAVA_OPTS SimpleApolloConfigDemo
   fi
-  exit 0;
+
 elif [ "$1" = "stop" ] ; then
   echo "==== stopping portal ===="
   cd $PORTAL_DIR
@@ -192,7 +195,6 @@ elif [ "$1" = "stop" ] ; then
   cd $SERVICE_DIR
   ./$SERVICE_JAR_NAME stop
 
-  exit 0;
 else
   echo "Usage: demo.sh ( commands ... )"
   echo "commands:"
