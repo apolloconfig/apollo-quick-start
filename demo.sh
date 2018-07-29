@@ -179,9 +179,9 @@ if [ "$1" = "start" ] ; then
   exit 0;
 elif [ "$1" = "client" ] ; then
   if [ "$windows" == "1" ]; then
-    java -classpath "$CLIENT_DIR;$CLIENT_JAR" $BASE_JAVA_OPTS SimpleApolloConfigDemo
+    java -classpath "$CLIENT_DIR;$CLIENT_JAR" $BASE_JAVA_OPTS com.ctrip.framework.apollo.demo.api.SimpleApolloConfigDemo
   else
-    java -classpath $CLIENT_DIR:$CLIENT_JAR $BASE_JAVA_OPTS SimpleApolloConfigDemo
+    java -classpath $CLIENT_DIR:$CLIENT_JAR $BASE_JAVA_OPTS com.ctrip.framework.apollo.demo.api.SimpleApolloConfigDemo
   fi
 
 elif [ "$1" = "stop" ] ; then

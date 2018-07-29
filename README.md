@@ -56,7 +56,7 @@ SHOW VARIABLES WHERE Variable_name = 'version';
     * **由于Quick Start项目比较大，所以放在了另外的repository，请注意项目地址**
         * https://github.com/nobodyiam/apollo-build-scripts
 2. 从百度网盘下载
-    * 通过[网盘链接](https://pan.baidu.com/s/18K82xSAMY6_vmqxjOjlbsA)下载
+    * 通过[网盘链接](https://pan.baidu.com/s/1NMHpdT7NFIGYBdFvYDFq-g)下载
     * 下载到本地后，在本地解压apollo-quick-start.zip
 3. 为啥安装包要50M这么大？
     * 因为这是一个可以自启动的jar包，里面包含了所有依赖jar包以及一个内置的tomcat容器
@@ -157,7 +157,7 @@ Portal started. You can visit http://localhost:8070 now!
 ## 3.4 注意
 Quick Start只是用来帮助大家快速体验Apollo项目，具体实际使用时请参考：[分布式部署指南](https://github.com/ctripcorp/apollo/wiki/%E5%88%86%E5%B8%83%E5%BC%8F%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97)。
 
-另外需要注意的是Quick Start不支持增加环境，只有通过自己部署源码打出来的包才可以新增环境，同样请参考：[分布式部署指南](https://github.com/ctripcorp/apollo/wiki/%E5%88%86%E5%B8%83%E5%BC%8F%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97)
+另外需要注意的是Quick Start不支持增加环境，只有通过分布式部署才可以新增环境，同样请参考：[分布式部署指南](https://github.com/ctripcorp/apollo/wiki/%E5%88%86%E5%B8%83%E5%BC%8F%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97)
 
 # 四、使用Apollo配置中心
 ## 4.1 使用样例项目
