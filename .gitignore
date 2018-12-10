@@ -25,4 +25,5 @@ target
 apollo-portal.jar
 apollo-service.jar
 *.log
+*.gz
 *.pid
