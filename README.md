@@ -56,7 +56,7 @@ SHOW VARIABLES WHERE Variable_name = 'version';
     * **由于Quick Start项目比较大，所以放在了另外的repository，请注意项目地址**
         * https://github.com/nobodyiam/apollo-build-scripts
 2. 从百度网盘下载
-    * 通过[网盘链接](https://pan.baidu.com/s/1qP-ZhQ4IMEx5Y4mZlyhRNg)下载
+    * 通过[网盘链接](https://pan.baidu.com/s/1iftkG14dVtOq-JIyz3AqLA)下载
     * 下载到本地后，在本地解压apollo-quick-start.zip
 3. 为啥安装包要56M这么大？
     * 因为这是一个可以自启动的jar包，里面包含了所有依赖jar包以及一个内置的tomcat容器
