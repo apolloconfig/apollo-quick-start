@@ -61,6 +61,14 @@ SHOW VARIABLES WHERE Variable_name = 'version';
 3. 为啥安装包要56M这么大？
     * 因为这是一个可以自启动的jar包，里面包含了所有依赖jar包以及一个内置的tomcat容器
 
+### 1.3.1 手动打包Quick Start安装包
+
+Quick Start只针对本地测试使用，所以一般用户不需要自己下载源码打包，只需要下载已经打好的包即可。不过也有部分用户希望在修改代码后重新打包，那么可以参考如下步骤：
+
+1. 修改apollo-configservice, apollo-adminservice和apollo-portal的pom.xml，注释掉spring-boot-maven-plugin和maven-assembly-plugin
+2. 在根目录下执行`mvn clean package -pl apollo-assembly -am -DskipTests=true`
+3. 复制apollo-assembly/target下的jar包，rename为apollo-all-in-one.jar
+
 # 二、安装步骤
 ## 2.1 创建数据库
 Apollo服务端共需要两个数据库：`ApolloPortalDB`和`ApolloConfigDB`，我们把数据库、表的创建和样例数据都分别准备了sql文件，只需要导入数据库即可。
@@ -242,4 +250,4 @@ Apollo Config Demo. Please input key to get the value. Input quit to exit.
 ```properties
 app.id=你的appId
 ```
-# 运行`./demo.sh client`启动Demo客户端即可。
+运行`./demo.sh client`启动Demo客户端即可。
