@@ -9,7 +9,7 @@
 
 不过这里需要注意的是，Quick Start只针对本地测试使用，如果要部署到生产环境，还请另行参考[分布式部署指南](https://github.com/ctripcorp/apollo/wiki/%E5%88%86%E5%B8%83%E5%BC%8F%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97)。
 
-> 注：Quick Start需要有bash环境，Windows用户建议安装[Git Bash](https://git-for-windows.github.io/)，或者也可以直接通过IDE环境启动，详见[Apollo开发指南](https://github.com/ctripcorp/apollo/wiki/Apollo%E5%BC%80%E5%8F%91%E6%8C%87%E5%8D%97)。
+> 注：Quick Start需要有bash环境，Windows用户请安装[Git Bash](https://git-for-windows.github.io/)，或者也可以直接通过IDE环境启动，详见[Apollo开发指南](https://github.com/ctripcorp/apollo/wiki/Apollo%E5%BC%80%E5%8F%91%E6%8C%87%E5%8D%97)。
 
 # 一、准备工作
 ## 1.1 Java
@@ -30,6 +30,8 @@ java version "1.8.0_74"
 Java(TM) SE Runtime Environment (build 1.8.0_74-b02)
 Java HotSpot(TM) 64-Bit Server VM (build 25.74-b02, mixed mode)
 ```
+
+Windows用户请确保JAVA_HOME环境变量已经设置。
 
 ## 1.2 MySQL
 
@@ -56,7 +58,7 @@ SHOW VARIABLES WHERE Variable_name = 'version';
     * **由于Quick Start项目比较大，所以放在了另外的repository，请注意项目地址**
         * https://github.com/nobodyiam/apollo-build-scripts
 2. 从百度网盘下载
-    * 通过[网盘链接](https://pan.baidu.com/s/1vWXOR1tlW3PTZHTq1nzZzg)下载（提取码: deca）
+    * 通过[网盘链接](https://pan.baidu.com/s/1mhVf9va#list/path=/sharelink1426331153-165614845139829/apollo-quick-start&parentPath=/sharelink1426331153-165614845139829)下载
     * 下载到本地后，在本地解压apollo-quick-start.zip
 3. 为啥安装包要58M这么大？
     * 因为这是一个可以自启动的jar包，里面包含了所有依赖jar包以及一个内置的tomcat容器
