@@ -125,6 +125,9 @@ apollo_config_db_password=密码（如果没有密码，留空即可）
 apollo_portal_db_url=jdbc:mysql://localhost:3306/ApolloPortalDB?characterEncoding=utf8
 apollo_portal_db_username=用户名
 apollo_portal_db_password=密码（如果没有密码，留空即可）
+
+# 公网服务 把localhost换成公网ip。
+admin_server_url=http://localhost:8090
 ```
 
 > 注意：不要修改demo.sh的其它部分

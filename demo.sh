@@ -22,16 +22,16 @@ else
     windows="0"
 fi
 
-# meta server url
+# meta server url  这里吧localhost换成公网ip。
 config_server_url=http://localhost:8080
 admin_server_url=http://localhost:8090
 eureka_service_url=$config_server_url/eureka/
 portal_url=http://localhost:8070
 
-# JAVA OPTS
+# JAVA OPTS  -Deureka.instance.homePageUrl=http://${指定的IP}:${指定的Port}
 BASE_JAVA_OPTS="-Denv=dev"
 CLIENT_JAVA_OPTS="$BASE_JAVA_OPTS -Dapollo.meta=$config_server_url"
-SERVER_JAVA_OPTS="$BASE_JAVA_OPTS -Dspring.profiles.active=github -Deureka.service.url=$eureka_service_url"
+SERVER_JAVA_OPTS="$BASE_JAVA_OPTS -Dspring.profiles.active=github -Deureka.service.url=$eureka_service_url -Deureka.instance.homePageUrl=$config_server_url"
 PORTAL_JAVA_OPTS="$BASE_JAVA_OPTS -Ddev_meta=$config_server_url -Dspring.profiles.active=github,auth -Deureka.client.enabled=false -Dhibernate.query.plan_cache_max_size=192"
 
 # executable
