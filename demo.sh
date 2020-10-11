@@ -1,14 +1,35 @@
 #!/bin/bash
 
+# apollo system env
+apollo_db_host=$APOLLO_DB_HOST
+apollo_db_username=$APOLLO_DB_USERNAME
+apollo_db_password=$APOLLO_DB_PASSWORD
+
+if [[ -z "$APOLLO_DB_HOST" ]]; then
+    apollo_db_host=apollo-db
+fi
+
+if [[ -z "$APOLLO_DB_USERNAME" ]]; then
+    apollo_db_username=root
+fi
+
+if [[ -z "$APOLLO_DB_PASSWORD" ]]; then
+    apollo_db_password=root
+fi
+
 # apollo config db info
-apollo_config_db_url=jdbc:mysql://localhost:3306/ApolloConfigDB?characterEncoding=utf8
-apollo_config_db_username=root
-apollo_config_db_password=
+apollo_config_db_url="jdbc:mysql://$apollo_db_host:3306/ApolloConfigDB?characterEncoding=utf8"
+apollo_config_db_username=$apollo_db_username
+apollo_config_db_password=$apollo_db_password
+
+echo "$apollo_config_db_url : $apollo_config_db_username : $apollo_config_db_password"
 
 # apollo portal db info
-apollo_portal_db_url=jdbc:mysql://localhost:3306/ApolloPortalDB?characterEncoding=utf8
-apollo_portal_db_username=root
-apollo_portal_db_password=
+apollo_portal_db_url="jdbc:mysql://$apollo_db_host:3306/ApolloPortalDB?characterEncoding=utf8"
+apollo_portal_db_username=$apollo_db_username
+apollo_portal_db_password=$apollo_db_password
+
+echo "$apollo_portal_db_url : $apollo_portal_db_username : $apollo_portal_db_password"
 
 # =============== Please do not modify the following content =============== #
 
