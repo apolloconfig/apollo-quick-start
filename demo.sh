@@ -54,7 +54,7 @@ function checkJava {
   if [[ -n "$JAVA_HOME" ]] && [[ -x "$JAVA_HOME/bin/java" ]];  then
       if [ "$windows" == "1" ]; then
         tmp_java_home=`cygpath -sw "$JAVA_HOME"`
-        export JAVA_HOME=`cygpath -u $tmp_java_home`
+        export JAVA_HOME=`cygpath -u "$tmp_java_home"`
         echo "Windows new JAVA_HOME is: $JAVA_HOME"
       fi
       _java="$JAVA_HOME/bin/java"
