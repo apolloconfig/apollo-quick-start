@@ -3,12 +3,12 @@
 # apollo config db info
 apollo_config_db_url="jdbc:mysql://localhost:3306/ApolloConfigDB?characterEncoding=utf8&serverTimezone=Asia/Shanghai"
 apollo_config_db_username=root
-apollo_config_db_password=
+apollo_config_db_password=songshun
 
 # apollo portal db info
 apollo_portal_db_url="jdbc:mysql://localhost:3306/ApolloPortalDB?characterEncoding=utf8&serverTimezone=Asia/Shanghai"
 apollo_portal_db_username=root
-apollo_portal_db_password=
+apollo_portal_db_password=songshun
 
 # =============== Please do not modify the following content =============== #
 
@@ -104,7 +104,7 @@ if [ "$1" = "start" ] ; then
   echo "==== starting service ===="
   echo "Service logging file is $SERVICE_LOG"
   export APP_NAME="apollo-service"
-  export JAVA_OPTS="$SERVER_JAVA_OPTS -Dlogging.file=./apollo-service.log -Dspring.datasource.url=$apollo_config_db_url -Dspring.datasource.username=$apollo_config_db_username -Dspring.datasource.password=$apollo_config_db_password"
+  export JAVA_OPTS="$SERVER_JAVA_OPTS -Dlogging.file.name=./apollo-service.log -Dspring.datasource.url=$apollo_config_db_url -Dspring.datasource.username=$apollo_config_db_username -Dspring.datasource.password=$apollo_config_db_password"
 
   if [[ -f $SERVICE_JAR ]]; then
     rm -rf $SERVICE_JAR
@@ -149,7 +149,7 @@ if [ "$1" = "start" ] ; then
   echo "==== starting portal ===="
   echo "Portal logging file is $PORTAL_LOG"
   export APP_NAME="apollo-portal"
-  export JAVA_OPTS="$PORTAL_JAVA_OPTS -Dlogging.file=./apollo-portal.log -Dserver.port=8070 -Dspring.datasource.url=$apollo_portal_db_url -Dspring.datasource.username=$apollo_portal_db_username -Dspring.datasource.password=$apollo_portal_db_password"
+  export JAVA_OPTS="$PORTAL_JAVA_OPTS -Dlogging.file.name=./apollo-portal.log -Dserver.port=8070 -Dspring.datasource.url=$apollo_portal_db_url -Dspring.datasource.username=$apollo_portal_db_username -Dspring.datasource.password=$apollo_portal_db_password"
 
   if [[ -f $PORTAL_JAR ]]; then
     rm -rf $PORTAL_JAR
