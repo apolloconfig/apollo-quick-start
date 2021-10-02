@@ -12,6 +12,8 @@ services:
       - "8090:8090"
     links:
       - apollo-db
+    environment:
+      JAVA_OPTS: '-Xms100m -Xmx1000m -Xmn100m -Xss256k -XX:MetaspaceSize=10m -XX:MaxMetaspaceSize=250m'
 
   apollo-db:
     image: mysql:5.7
