@@ -14,6 +14,7 @@ services:
       - apollo-db
     environment:
       JAVA_OPTS: '-Xms100m -Xmx1000m -Xmn100m -Xss256k -XX:MetaspaceSize=10m -XX:MaxMetaspaceSize=250m'
+      # APOLLO_CONFIG_DB_PASSWORD: 'apollo'
 
   apollo-db:
     image: mysql:5.7
@@ -21,6 +22,7 @@ services:
     environment:
       TZ: Asia/Shanghai
       MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+      # MYSQL_ROOT_PASSWORD: 'apollo'
     depends_on:
       - apollo-dbdata
     ports:

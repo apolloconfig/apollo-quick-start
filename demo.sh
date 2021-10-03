@@ -1,14 +1,22 @@
 #!/bin/bash
 
+if [[ -n "$JAVA_OPTS" ]]; then
+  echo JAVA_OPTS = $JAVA_OPTS
+fi
+
+if [[ -n "$APOLLO_CONFIG_DB_PASSWORD" ]]; then
+  echo APOLLO_CONFIG_DB_PASSWORD = $APOLLO_CONFIG_DB_PASSWORD
+fi
+
 # apollo config db info
 apollo_config_db_url="jdbc:mysql://localhost:3306/ApolloConfigDB?characterEncoding=utf8&serverTimezone=Asia/Shanghai"
 apollo_config_db_username=root
-apollo_config_db_password=
+apollo_config_db_password=$APOLLO_CONFIG_DB_PASSWORD
 
 # apollo portal db info
 apollo_portal_db_url="jdbc:mysql://localhost:3306/ApolloPortalDB?characterEncoding=utf8&serverTimezone=Asia/Shanghai"
 apollo_portal_db_username=root
-apollo_portal_db_password=
+apollo_portal_db_password=$APOLLO_CONFIG_DB_PASSWORD
 
 # =============== Please do not modify the following content =============== #
 
@@ -29,7 +37,6 @@ eureka_service_url=$config_server_url/eureka/
 portal_url=http://localhost:8070
 
 # JAVA OPTS
-echo $JAVA_OPTS
 BASE_JAVA_OPTS="$JAVA_OPTS -Denv=dev"
 CLIENT_JAVA_OPTS="$BASE_JAVA_OPTS -Dapollo.meta=$config_server_url"
 SERVER_JAVA_OPTS="$BASE_JAVA_OPTS -Dspring.profiles.active=github -Deureka.service.url=$eureka_service_url"
