@@ -1,22 +1,35 @@
 #!/bin/bash
 
+# handle env
 if [[ -n "$JAVA_OPTS" ]]; then
   echo JAVA_OPTS = $JAVA_OPTS
 fi
 
+if [[ -n "$APOLLO_CONFIG_DB_USERNAME" ]]; then
+  echo APOLLO_CONFIG_DB_USERNAME = "$APOLLO_CONFIG_DB_USERNAME"
+fi
+
 if [[ -n "$APOLLO_CONFIG_DB_PASSWORD" ]]; then
-  echo APOLLO_CONFIG_DB_PASSWORD = $APOLLO_CONFIG_DB_PASSWORD
+  echo APOLLO_CONFIG_DB_PASSWORD = "${APOLLO_CONFIG_DB_PASSWORD//?/*}"
+fi
+
+if [[ -n "$APOLLO_PORTAL_DB_USERNAME" ]]; then
+  echo APOLLO_PORTAL_DB_USERNAME = "$APOLLO_PORTAL_DB_USERNAME"
+fi
+
+if [[ -n "$APOLLO_PORTAL_DB_PASSWORD" ]]; then
+  echo APOLLO_PORTAL_DB_PASSWORD = "${APOLLO_PORTAL_DB_PASSWORD//?/*}"
 fi
 
 # apollo config db info
 apollo_config_db_url="jdbc:mysql://localhost:3306/ApolloConfigDB?characterEncoding=utf8&serverTimezone=Asia/Shanghai"
-apollo_config_db_username=root
-apollo_config_db_password=$APOLLO_CONFIG_DB_PASSWORD
+apollo_config_db_username=${APOLLO_CONFIG_DB_USERNAME:-root}
+apollo_config_db_password=${APOLLO_CONFIG_DB_PASSWORD:-}
 
 # apollo portal db info
 apollo_portal_db_url="jdbc:mysql://localhost:3306/ApolloPortalDB?characterEncoding=utf8&serverTimezone=Asia/Shanghai"
-apollo_portal_db_username=root
-apollo_portal_db_password=$APOLLO_CONFIG_DB_PASSWORD
+apollo_portal_db_username=${APOLLO_PORTAL_DB_USERNAME:-root}
+apollo_portal_db_password=${APOLLO_PORTAL_DB_PASSWORD:-}
 
 # =============== Please do not modify the following content =============== #
 
