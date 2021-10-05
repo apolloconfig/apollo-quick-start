@@ -1,14 +1,35 @@
 #!/bin/bash
 
+# handle env
+if [[ -n "$JAVA_OPTS" ]]; then
+  echo JAVA_OPTS = $JAVA_OPTS
+fi
+
+if [[ -n "$APOLLO_CONFIG_DB_USERNAME" ]]; then
+  echo APOLLO_CONFIG_DB_USERNAME = "$APOLLO_CONFIG_DB_USERNAME"
+fi
+
+if [[ -n "$APOLLO_CONFIG_DB_PASSWORD" ]]; then
+  echo APOLLO_CONFIG_DB_PASSWORD = "${APOLLO_CONFIG_DB_PASSWORD//?/*}"
+fi
+
+if [[ -n "$APOLLO_PORTAL_DB_USERNAME" ]]; then
+  echo APOLLO_PORTAL_DB_USERNAME = "$APOLLO_PORTAL_DB_USERNAME"
+fi
+
+if [[ -n "$APOLLO_PORTAL_DB_PASSWORD" ]]; then
+  echo APOLLO_PORTAL_DB_PASSWORD = "${APOLLO_PORTAL_DB_PASSWORD//?/*}"
+fi
+
 # apollo config db info
 apollo_config_db_url="jdbc:mysql://localhost:3306/ApolloConfigDB?characterEncoding=utf8&serverTimezone=Asia/Shanghai"
-apollo_config_db_username=root
-apollo_config_db_password=
+apollo_config_db_username=${APOLLO_CONFIG_DB_USERNAME:-root}
+apollo_config_db_password=${APOLLO_CONFIG_DB_PASSWORD:-}
 
 # apollo portal db info
 apollo_portal_db_url="jdbc:mysql://localhost:3306/ApolloPortalDB?characterEncoding=utf8&serverTimezone=Asia/Shanghai"
-apollo_portal_db_username=root
-apollo_portal_db_password=
+apollo_portal_db_username=${APOLLO_PORTAL_DB_USERNAME:-root}
+apollo_portal_db_password=${APOLLO_PORTAL_DB_PASSWORD:-}
 
 # =============== Please do not modify the following content =============== #
 
@@ -29,7 +50,7 @@ eureka_service_url=$config_server_url/eureka/
 portal_url=http://localhost:8070
 
 # JAVA OPTS
-BASE_JAVA_OPTS="-Denv=dev"
+BASE_JAVA_OPTS="$JAVA_OPTS -Denv=dev"
 CLIENT_JAVA_OPTS="$BASE_JAVA_OPTS -Dapollo.meta=$config_server_url"
 SERVER_JAVA_OPTS="$BASE_JAVA_OPTS -Dspring.profiles.active=github -Deureka.service.url=$eureka_service_url"
 PORTAL_JAVA_OPTS="$BASE_JAVA_OPTS -Ddev_meta=$config_server_url -Dspring.profiles.active=github,auth -Deureka.client.enabled=false -Dhibernate.query.plan_cache_max_size=192"
