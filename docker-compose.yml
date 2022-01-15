@@ -2,7 +2,7 @@ version: '2'
 
 services:
   apollo-quick-start:
-    image: apollo-quick-start
+    image: nobodyiam/apollo-quick-start
     container_name: apollo-quick-start
     depends_on:
       - apollo-db
