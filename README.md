@@ -5,19 +5,16 @@
 
 为了让大家更快的上手了解Apollo配置中心，我们这里准备了一个Quick Start，能够在几分钟内在本地环境部署、启动Apollo配置中心。
 
-考虑到Docker的便捷性，我们还提供了Quick Start的Docker版本，如果你对Docker比较熟悉的话，可以参考[Apollo Quick Start Docker部署](https://github.com/ctripcorp/apollo/wiki/Apollo-Quick-Start-Docker%E9%83%A8%E7%BD%B2)通过Docker快速部署Apollo。
+考虑到Docker的便捷性，我们还提供了Quick Start的Docker版本，如果你对Docker比较熟悉的话，可以参考[Apollo Quick Start Docker部署](https://www.apolloconfig.com/#/zh/deployment/quick-start-docker)通过Docker快速部署Apollo。
 
-不过这里需要注意的是，Quick Start只针对本地测试使用，如果要部署到生产环境，还请另行参考[分布式部署指南](https://github.com/ctripcorp/apollo/wiki/%E5%88%86%E5%B8%83%E5%BC%8F%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97)。
+不过这里需要注意的是，Quick Start只针对本地测试使用，如果要部署到生产环境，还请另行参考[分布式部署指南](https://www.apolloconfig.com/#/zh/deployment/distributed-deployment-guide)。
 
-> 注：Quick Start需要有bash环境，Windows用户请安装[Git Bash](https://git-for-windows.github.io/)，或者也可以直接通过IDE环境启动，详见[Apollo开发指南](https://github.com/ctripcorp/apollo/wiki/Apollo%E5%BC%80%E5%8F%91%E6%8C%87%E5%8D%97)。
+> 注：Quick Start需要有bash环境，Windows用户请安装[Git Bash](https://git-for-windows.github.io/)，或者也可以直接通过IDE环境启动，详见[Apollo开发指南](https://www.apolloconfig.com/#/zh/development/apollo-development-guide)。
 
 # 一、准备工作
 ## 1.1 Java
 
-* Apollo服务端：1.8+
-* Apollo客户端：1.7+
-
-由于Quick Start会在本地同时启动服务端和客户端，所以需要在本地安装Java 1.8+。
+* 版本要求: 1.8+
 
 在配置好后，可以通过如下命令检查：
 ```sh
@@ -54,7 +51,7 @@ SHOW VARIABLES WHERE Variable_name = 'version';
 安装包共50M，如果访问github网速不给力的话，可以从百度网盘下载。
 
 1. 从Github下载
-    * checkout或下载[apollo-build-scripts项目](https://github.com/nobodyiam/apollo-build-scripts)
+    * checkout或下载[apollo-build-scripts项目](https://github.com/apolloconfig/apollo-build-scripts)
 2. 从百度网盘下载
     * 通过[网盘链接](https://pan.baidu.com/s/1Ieelw6y3adECgktO0ea0Gg)下载，提取码: 9wwe
     * 下载到本地后，在本地解压apollo-quick-start.zip
@@ -76,7 +73,7 @@ Apollo服务端共需要两个数据库：`ApolloPortalDB`和`ApolloConfigDB`，
 > 注意：如果你本地已经创建过Apollo数据库，请注意备份数据。我们准备的sql文件会清空Apollo相关的表。
 
 ### 2.1.1 创建ApolloPortalDB
-通过各种MySQL客户端导入[sql/apolloportaldb.sql](https://github.com/nobodyiam/apollo-build-scripts/blob/master/sql/apolloportaldb.sql)即可。
+通过各种MySQL客户端导入[sql/apolloportaldb.sql](https://github.com/apolloconfig/apollo-build-scripts/blob/master/sql/apolloportaldb.sql)即可。
 
 下面以MySQL原生客户端为例：
 ```sql
@@ -93,7 +90,7 @@ select `Id`, `AppId`, `Name` from ApolloPortalDB.App;
 | 1  | SampleApp | Sample App |
 
 ### 2.1.2 创建ApolloConfigDB
-通过各种MySQL客户端导入[sql/apolloconfigdb.sql](https://github.com/nobodyiam/apollo-build-scripts/blob/master/sql/apolloconfigdb.sql)即可。
+通过各种MySQL客户端导入[sql/apolloconfigdb.sql](https://github.com/apolloconfig/apollo-build-scripts/blob/master/sql/apolloconfigdb.sql)即可。
 
 下面以MySQL原生客户端为例：
 ```sql
@@ -109,7 +106,7 @@ select `NamespaceId`, `Key`, `Value`, `Comment` from ApolloConfigDB.Item;
 | 1           | timeout | 100   | sample timeout配置 |
 
 ## 2.2 配置数据库连接信息
-Apollo服务端需要知道如何连接到你前面创建的数据库，所以需要编辑[demo.sh](https://github.com/nobodyiam/apollo-build-scripts/blob/master/demo.sh)，修改ApolloPortalDB和ApolloConfigDB相关的数据库连接串信息。
+Apollo服务端需要知道如何连接到你前面创建的数据库，所以需要编辑[demo.sh](https://github.com/apolloconfig/apollo-build-scripts/blob/master/demo.sh)，修改ApolloPortalDB和ApolloConfigDB相关的数据库连接串信息。
 
 > 注意：填入的用户需要具备对ApolloPortalDB和ApolloConfigDB数据的读写权限。
 
@@ -163,9 +160,9 @@ Portal started. You can visit http://localhost:8070 now!
 > 注：在启动apollo-configservice的过程中会在日志中输出eureka注册失败的信息，如`com.sun.jersey.api.client.ClientHandlerException: java.net.ConnectException: Connection refused`。需要注意的是，这个是预期的情况，因为apollo-configservice需要向Meta Server（它自己）注册服务，但是因为在启动过程中，自己还没起来，所以会报这个错。后面会进行重试的动作，所以等自己服务起来后就会注册正常了。
 
 ## 3.4 注意
-Quick Start只是用来帮助大家快速体验Apollo项目，具体实际使用时请参考：[分布式部署指南](https://github.com/ctripcorp/apollo/wiki/%E5%88%86%E5%B8%83%E5%BC%8F%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97)。
+Quick Start只是用来帮助大家快速体验Apollo项目，具体实际使用时请参考：[分布式部署指南](https://www.apolloconfig.com/#/zh/deployment/distributed-deployment-guide)。
 
-另外需要注意的是Quick Start不支持增加环境，只有通过分布式部署才可以新增环境，同样请参考：[分布式部署指南](https://github.com/ctripcorp/apollo/wiki/%E5%88%86%E5%B8%83%E5%BC%8F%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97)
+另外需要注意的是Quick Start不支持增加环境，只有通过分布式部署才可以新增环境，同样请参考：[分布式部署指南](https://www.apolloconfig.com/#/zh/deployment/distributed-deployment-guide)
 
 # 四、使用Apollo配置中心
 ## 4.1 使用样例项目
@@ -173,21 +170,21 @@ Quick Start只是用来帮助大家快速体验Apollo项目，具体实际使用
 ### 4.1.1 查看样例配置
 1. 打开http://localhost:8070
 
-> Quick Start集成了[Spring Security简单认证](https://github.com/ctripcorp/apollo/wiki/Portal-%E5%AE%9E%E7%8E%B0%E7%94%A8%E6%88%B7%E7%99%BB%E5%BD%95%E5%8A%9F%E8%83%BD#%E5%AE%9E%E7%8E%B0%E6%96%B9%E5%BC%8F%E4%B8%80%E4%BD%BF%E7%94%A8apollo%E6%8F%90%E4%BE%9B%E7%9A%84spring-security%E7%AE%80%E5%8D%95%E8%AE%A4%E8%AF%81)，更多信息可以参考[Portal 实现用户登录功能](https://github.com/ctripcorp/apollo/wiki/Portal-%E5%AE%9E%E7%8E%B0%E7%94%A8%E6%88%B7%E7%99%BB%E5%BD%95%E5%8A%9F%E8%83%BD)
+> Quick Start集成了[Spring Security简单认证](https://www.apolloconfig.com/#/zh/development/portal-how-to-implement-user-login-function?id=%e5%ae%9e%e7%8e%b0%e6%96%b9%e5%bc%8f%e4%b8%80%ef%bc%9a%e4%bd%bf%e7%94%a8apollo%e6%8f%90%e4%be%9b%e7%9a%84spring-security%e7%ae%80%e5%8d%95%e8%ae%a4%e8%af%81)，更多信息可以参考[Portal 实现用户登录功能](https://www.apolloconfig.com/#/zh/development/portal-how-to-implement-user-login-function)
 
-<img src="https://github.com/nobodyiam/apollo-build-scripts/raw/master/images/apollo-login.png" alt="登录" width="640px">
+<img src="https://github.com/apolloconfig/apollo-build-scripts/raw/master/images/apollo-login.png" alt="登录" width="640px">
 
 2. 输入用户名apollo，密码admin后登录
 
-![首页](https://github.com/nobodyiam/apollo-build-scripts/blob/master/images/apollo-sample-home.png)
+![首页](https://github.com/apolloconfig/apollo-build-scripts/blob/master/images/apollo-sample-home.png)
 
 3. 点击SampleApp进入配置界面，可以看到当前有一个配置timeout=100
-![配置界面](https://github.com/nobodyiam/apollo-build-scripts/blob/master/images/sample-app-config.png)
+![配置界面](https://github.com/apolloconfig/apollo-build-scripts/blob/master/images/sample-app-config.png)
 
 > 如果提示`系统出错，请重试或联系系统负责人`，请稍后几秒钟重试一下，因为通过Eureka注册的服务有一个刷新的延时。
 
 ### 4.1.2 运行客户端程序
-我们准备了一个简单的[Demo客户端](https://github.com/ctripcorp/apollo/blob/master/apollo-demo/src/main/java/com/ctrip/framework/apollo/demo/api/SimpleApolloConfigDemo.java)来演示从Apollo配置中心获取配置。
+我们准备了一个简单的[Demo客户端](https://github.com/apolloconfig/apollo/blob/master/apollo-demo/src/main/java/com/ctrip/framework/apollo/demo/api/SimpleApolloConfigDemo.java)来演示从Apollo配置中心获取配置。
 
 程序很简单，就是用户输入一个key的名字，程序会输出这个key对应的值。
 
@@ -216,15 +213,15 @@ Apollo Config Demo. Please input key to get the value. Input quit to exit.
 ### 4.1.3 修改配置并发布
 
 1. 在配置界面点击timeout这一项的编辑按钮
-![编辑配置](https://github.com/nobodyiam/apollo-build-scripts/blob/master/images/sample-app-modify-config.png)
+![编辑配置](https://github.com/apolloconfig/apollo-build-scripts/blob/master/images/sample-app-modify-config.png)
 
 2. 在弹出框中把值改成200并提交
-![配置修改](https://github.com/nobodyiam/apollo-build-scripts/blob/master/images/sample-app-submit-config.png)
+![配置修改](https://github.com/apolloconfig/apollo-build-scripts/blob/master/images/sample-app-submit-config.png)
 
 3. 点击发布按钮，并填写发布信息
-![发布](https://github.com/nobodyiam/apollo-build-scripts/blob/master/images/sample-app-release-config.png)
+![发布](https://github.com/apolloconfig/apollo-build-scripts/blob/master/images/sample-app-release-config.png)
 
-![发布信息](https://github.com/nobodyiam/apollo-build-scripts/blob/master/images/sample-app-release-detail.png)
+![发布信息](https://github.com/apolloconfig/apollo-build-scripts/blob/master/images/sample-app-release-detail.png)
 
 ### 4.1.4 客户端查看修改后的值
 如果客户端一直在运行的话，在配置发布后就会监听到配置变化，并输出修改的配置信息：
@@ -241,7 +238,7 @@ Apollo Config Demo. Please input key to get the value. Input quit to exit.
 
 ## 4.2 使用新的项目
 ### 4.2.1 应用接入Apollo
-这部分可以参考[Java应用接入指南](https://github.com/ctripcorp/apollo/wiki/Java%E5%AE%A2%E6%88%B7%E7%AB%AF%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97)
+这部分可以参考[Java应用接入指南](https://www.apolloconfig.com/#/zh/usage/java-sdk-user-guide)
 
 ### 4.2.2 运行客户端程序
 由于使用了新的项目，所以客户端需要修改appId信息。
