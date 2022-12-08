@@ -2,6 +2,7 @@ version: '2'
 
 services:
   apollo-quick-start:
+    platform: linux/arm64
     image: nobodyiam/apollo-quick-start
     container_name: apollo-quick-start
     depends_on:
@@ -20,6 +21,7 @@ services:
       #APOLLO_PORTAL_DB_PASSWORD: 'apollo'
 
   apollo-db:
+    platform: linux/x86_64
     image: mysql:5.7
     container_name: apollo-db
     environment:
