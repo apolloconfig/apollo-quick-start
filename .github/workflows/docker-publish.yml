@@ -12,7 +12,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      tags: ${{ steps.step1.check-tags.tags }}
+      tags: ${{ steps.check-tags.outputs.tags }}
     steps:
       - id: check-tags
         run: |
@@ -41,4 +41,4 @@ jobs:
           platforms: linux/amd64,linux/arm64
           file: ./Dockerfile
           push: true
-          tags: nobodyiam/apollo-quick-start:${{ needs.build.outputs.tags }}
+          tags: ${{ needs.build.outputs.tags }}
