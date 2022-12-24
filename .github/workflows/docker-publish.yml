@@ -9,7 +9,7 @@ on:
         default: 'latest'
 
 jobs:
-  tags:
+  check:
     runs-on: ubuntu-latest
     outputs:
       tags: ${{ steps.check-tags.outputs.tags }}
@@ -23,7 +23,7 @@ jobs:
             echo "tags=nobodyiam/apollo-quick-start:latest,nobodyiam/apollo-quick-start:${{ github.event.inputs.repository }}" >> $GITHUB_OUTPUT
           fi  
   publish:
-    needs: tags
+    needs: check
     runs-on: ubuntu-latest
     steps:
       -
@@ -46,4 +46,4 @@ jobs:
           platforms: linux/amd64,linux/arm64
           file: ./Dockerfile
           push: true
-          tags: ${{ needs.build.outputs.tags }}
+          tags: ${{ needs.check.outputs.tags }}
