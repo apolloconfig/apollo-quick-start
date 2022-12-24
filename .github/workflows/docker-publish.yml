@@ -3,7 +3,7 @@ name: Publish Docker Image
 on:
   workflow_dispatch:
     inputs:
-      repository:
+      tag:
         description: 'tag(latest or x.x.x)'
         required: true
         default: 'latest'
@@ -17,10 +17,10 @@ jobs:
       - id: check-tags
         name: check tags
         run: |
-          if [[ "${{ github.event.inputs.repository }}" == "latest" ]]; then
+          if [[ "${{ github.event.inputs.tag }}" == "latest" ]]; then
             echo "tags=nobodyiam/apollo-quick-start:latest" >> $GITHUB_OUTPUT
           else
-            echo "tags=nobodyiam/apollo-quick-start:latest,nobodyiam/apollo-quick-start:${{ github.event.inputs.repository }}" >> $GITHUB_OUTPUT
+            echo "tags=nobodyiam/apollo-quick-start:latest,nobodyiam/apollo-quick-start:${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
           fi  
   publish:
     needs: check
