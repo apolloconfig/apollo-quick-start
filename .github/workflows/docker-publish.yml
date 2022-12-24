@@ -9,18 +9,23 @@ on:
         default: 'latest'
 
 jobs:
-  build:
+  tags:
     runs-on: ubuntu-latest
     outputs:
       tags: ${{ steps.check-tags.outputs.tags }}
     steps:
       - id: check-tags
+        name: check tags
         run: |
           if [[ "${{ github.event.inputs.repository }}" == "latest" ]]; then
             echo "tags=nobodyiam/apollo-quick-start:latest" >> $GITHUB_OUTPUT
           else
             echo "tags=nobodyiam/apollo-quick-start:latest,nobodyiam/apollo-quick-start:${{ github.event.inputs.repository }}" >> $GITHUB_OUTPUT
-          fi
+          fi  
+  publish:
+    needs: tags
+    runs-on: ubuntu-latest
+    steps:
       -
         name: Checkout
         uses: actions/checkout@v3
