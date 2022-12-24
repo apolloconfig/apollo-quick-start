@@ -16,7 +16,7 @@ jobs:
     steps:
       - id: check-tags
         run: |
-          if [[ ${{ github.event.inputs.repository }} == "latest" ]]; then
+          if [[ "${{ github.event.inputs.repository }}" == "latest" ]]; then
             echo "tags=nobodyiam/apollo-quick-start:latest" >> $GITHUB_OUTPUT
           else
             echo "tags=nobodyiam/apollo-quick-start:latest,nobodyiam/apollo-quick-start:${{ github.event.inputs.repository }}" >> $GITHUB_OUTPUT
