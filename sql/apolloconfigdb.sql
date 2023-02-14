@@ -232,6 +232,7 @@ CREATE TABLE `Item` (
   `Id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增Id',
   `NamespaceId` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '集群NamespaceId',
   `Key` varchar(128) NOT NULL DEFAULT 'default' COMMENT '配置项Key',
+  `Type` tinyint(3) unsigned NOT NULL DEFAULT '0' COMMENT '配置项类型，0: String，1: Number，2: Boolean，3: JSON',
   `Value` longtext NOT NULL COMMENT '配置项值',
   `Comment` varchar(1024) DEFAULT '' COMMENT '注释',
   `LineNum` int(10) unsigned DEFAULT '0' COMMENT '行号',
@@ -345,7 +346,8 @@ CREATE TABLE `ReleaseHistory` (
   PRIMARY KEY (`Id`),
   KEY `IX_Namespace` (`AppId`,`ClusterName`,`NamespaceName`,`BranchName`),
   KEY `IX_ReleaseId` (`ReleaseId`),
-  KEY `IX_DataChange_LastTime` (`DataChange_LastTime`)
+  KEY `IX_DataChange_LastTime` (`DataChange_LastTime`),
+  KEY `IX_PreviousReleaseId` (`PreviousReleaseId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发布历史';
 
 
@@ -408,15 +410,35 @@ CREATE TABLE `AccessKey` (
   KEY `DataChange_LastTime` (`DataChange_LastTime`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='访问密钥';
 
+
+# Dump of table serviceregistry
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `ServiceRegistry`;
+
+CREATE TABLE `ServiceRegistry` (
+  `Id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '自增Id',
+  `ServiceName` VARCHAR(64) NOT NULL COMMENT '服务名',
+  `Uri` VARCHAR(64) NOT NULL COMMENT '服务地址',
+  `Cluster` VARCHAR(64) NOT NULL COMMENT '集群，可以用来标识apollo.cluster或者网络分区',
+  `Metadata` VARCHAR(1024) NOT NULL DEFAULT '{}' COMMENT '元数据，key value结构的json object，为了方面后面扩展功能而不需要修改表结构',
+  `DataChange_CreatedTime` TIMESTAMP NOT NULL COMMENT '创建时间',
+  `DataChange_LastTime` TIMESTAMP NOT NULL COMMENT '最后修改时间',
+  PRIMARY KEY (`Id`),
+  UNIQUE INDEX `IX_UNIQUE_KEY` (`ServiceName`, `Uri`),
+  INDEX `IX_DataChange_LastTime` (`DataChange_LastTime`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='注册中心';
+
+
 # Config
 # ------------------------------------------------------------
 INSERT INTO `ServerConfig` (`Key`, `Cluster`, `Value`, `Comment`)
 VALUES
     ('eureka.service.url', 'default', 'http://localhost:8080/eureka/', 'Eureka服务Url，多个service以英文逗号分隔'),
     ('namespace.lock.switch', 'default', 'false', '一次发布只能有一个人修改开关'),
+    ('item.key.length.limit', 'default', '128', 'item key 最大长度限制'),
     ('item.value.length.limit', 'default', '20000', 'item value最大长度限制'),
-    ('config-service.cache.enabled', 'default', 'false', 'ConfigService是否开启缓存，开启后能提高性能，但是会增大内存消耗！'),
-    ('item.key.length.limit', 'default', '128', 'item key 最大长度限制');
+    ('config-service.cache.enabled', 'default', 'false', 'ConfigService是否开启缓存，开启后能提高性能，但是会增大内存消耗！');
 
 # Sample Data
 # ------------------------------------------------------------
