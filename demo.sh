@@ -5,12 +5,20 @@ if [[ -n "$JAVA_OPTS" ]]; then
   echo JAVA_OPTS = $JAVA_OPTS
 fi
 
+if [[ -n "$APOLLO_CONFIG_DB_URL" ]]; then
+  echo APOLLO_CONFIG_DB_URL = "$APOLLO_CONFIG_DB_URL"
+fi
+
 if [[ -n "$APOLLO_CONFIG_DB_USERNAME" ]]; then
   echo APOLLO_CONFIG_DB_USERNAME = "$APOLLO_CONFIG_DB_USERNAME"
 fi
 
 if [[ -n "$APOLLO_CONFIG_DB_PASSWORD" ]]; then
   echo APOLLO_CONFIG_DB_PASSWORD = "${APOLLO_CONFIG_DB_PASSWORD//?/*}"
+fi
+
+if [[ -n "$APOLLO_PORTAL_DB_URL" ]]; then
+  echo APOLLO_PORTAL_DB_URL = "$APOLLO_PORTAL_DB_URL"
 fi
 
 if [[ -n "$APOLLO_PORTAL_DB_USERNAME" ]]; then
