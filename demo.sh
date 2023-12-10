@@ -30,15 +30,15 @@ if [[ -n "$APOLLO_PORTAL_DB_PASSWORD" ]]; then
 fi
 
 # database platform
-spring_profiles_group_github=${SPRING_PFOILES_GROUP_GITHUB:-mysql}
+spring_profiles_group_github=${SPRING_PFOILES_GROUP_GITHUB:-h2}
 
 # apollo config db info
-apollo_config_db_url=${APOLLO_CONFIG_DB_URL:-"jdbc:mysql://localhost:3306/ApolloConfigDB?characterEncoding=utf8&serverTimezone=Asia/Shanghai"}
+apollo_config_db_url=${APOLLO_CONFIG_DB_URL:-"jdbc:h2:mem:testdb;mode=mysql;DATABASE_TO_UPPER=FALSE;BUILTIN_ALIAS_OVERRIDE=TRUE;"}
 apollo_config_db_username=${APOLLO_CONFIG_DB_USERNAME:-root}
 apollo_config_db_password=${APOLLO_CONFIG_DB_PASSWORD:-}
 
 # apollo portal db info
-apollo_portal_db_url=${APOLLO_PORTAL_DB_URL:-"jdbc:mysql://localhost:3306/ApolloPortalDB?characterEncoding=utf8&serverTimezone=Asia/Shanghai"}
+apollo_portal_db_url=${APOLLO_PORTAL_DB_URL:-"jdbc:h2:mem:testdb;mode=mysql;DATABASE_TO_UPPER=FALSE;BUILTIN_ALIAS_OVERRIDE=TRUE;"}
 apollo_portal_db_username=${APOLLO_PORTAL_DB_USERNAME:-root}
 apollo_portal_db_password=${APOLLO_PORTAL_DB_PASSWORD:-}
 
