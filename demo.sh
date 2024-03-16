@@ -30,7 +30,7 @@ if [[ -n "$APOLLO_PORTAL_DB_PASSWORD" ]]; then
 fi
 
 # database platform
-spring_profiles_group_github=${SPRING_PFOILES_GROUP_GITHUB:-mysql}
+spring_profiles_group_github=${SPRING_PROFILES_GROUP_GITHUB:-mysql}
 
 # apollo config db info
 apollo_config_db_url=${APOLLO_CONFIG_DB_URL:-"jdbc:mysql://localhost:3306/ApolloConfigDB?characterEncoding=utf8&serverTimezone=Asia/Shanghai"}
@@ -54,32 +54,26 @@ else
     windows="0"
 fi
 
-# meta server url
-config_server_url=http://localhost:8080
-admin_server_url=http://localhost:8090
-portal_url=http://localhost:8070
-
-# JAVA OPTS
-BASE_JAVA_OPTS="$JAVA_OPTS -Denv=dev"
-CLIENT_JAVA_OPTS="$BASE_JAVA_OPTS -Dapollo.meta=$config_server_url"
-SERVER_JAVA_OPTS="$BASE_JAVA_OPTS -Dspring.profiles.active=github,database-discovery"
-PORTAL_JAVA_OPTS="$BASE_JAVA_OPTS -Ddev_meta=$config_server_url -Dspring.profiles.active=github,auth -Deureka.client.enabled=false -Dhibernate.query.plan_cache_max_size=192"
-
-# executable
-JAR_FILE=apollo-all-in-one.jar
-SERVICE_DIR=./service
-SERVICE_JAR_NAME=apollo-service.jar
-SERVICE_JAR=$SERVICE_DIR/$SERVICE_JAR_NAME
-SERVICE_LOG=$SERVICE_DIR/apollo-service.log
-PORTAL_DIR=./portal
-PORTAL_JAR_NAME=apollo-portal.jar
-PORTAL_JAR=$PORTAL_DIR/$PORTAL_JAR_NAME
-PORTAL_LOG=$PORTAL_DIR/apollo-portal.log
-CLIENT_DIR=./client
-CLIENT_JAR=$CLIENT_DIR/apollo-demo.jar
-
 # go to script directory
 cd "${0%/*}"
+
+# meta server url
+config_server_url=http://localhost:8080
+portal_url=http://localhost:8070
+
+# executable
+CURRENT_DIR=$(pwd)
+SERVICE_JAR=$CURRENT_DIR/apollo-all-in-one.jar
+SERVICE_LOG=$CURRENT_DIR/apollo-service.log
+CLIENT_DIR=$CURRENT_DIR/client
+CLIENT_JAR=$CLIENT_DIR/apollo-demo.jar
+
+# JAVA OPTS
+BASE_JAVA_OPTS="$JAVA_OPTS"
+CLIENT_JAVA_OPTS="$BASE_JAVA_OPTS -Dapollo.meta=$config_server_url"
+APOLLO_CONFIG_DB_CONFIG="-Dspring.config-datasource.url=$apollo_config_db_url -Dspring.config-datasource.username=$apollo_config_db_username -Dspring.config-datasource.password=$apollo_config_db_password"
+APOLLO_PORTAL_DB_CONFIG="-Dspring.portal-datasource.url=$apollo_portal_db_url -Dspring.portal-datasource.username=$apollo_portal_db_username -Dspring.portal-datasource.password=$apollo_portal_db_password"
+SERVER_JAVA_OPTS="$BASE_JAVA_OPTS -Dspring.profiles.active=github,database-discovery,auth -Dlogging.file.name=$SERVICE_LOG -Dspring.profiles.group.github=$spring_profiles_group_github $APOLLO_CONFIG_DB_CONFIG $APOLLO_PORTAL_DB_CONFIG"
 
 function checkJava {
   if [[ -n "$JAVA_HOME" ]] && [[ -x "$JAVA_HOME/bin/java" ]];  then
@@ -133,19 +127,12 @@ function checkServerAlive {
 checkJava
 
 if [ "$1" = "start" ] ; then
-  echo "==== starting service ===="
+  echo "==== starting ===="
   echo "Service logging file is $SERVICE_LOG"
   export APP_NAME="apollo-service"
-  export JAVA_OPTS="$SERVER_JAVA_OPTS -Dlogging.file.name=./apollo-service.log -Dspring.profiles.group.github=$spring_profiles_group_github -Dspring.datasource.url=$apollo_config_db_url -Dspring.datasource.username=$apollo_config_db_username -Dspring.datasource.password=$apollo_config_db_password"
+  export JAVA_OPTS="$SERVER_JAVA_OPTS"
 
-  if [[ -f $SERVICE_JAR ]]; then
-    rm -rf $SERVICE_JAR
-  fi
-
-  ln $JAR_FILE $SERVICE_JAR
-  chmod a+x $SERVICE_JAR
-
-  $SERVICE_JAR start --configservice --adminservice
+  $SERVICE_JAR start
 
   rc=$?
   if [[ $rc != 0 ]];
@@ -154,62 +141,17 @@ if [ "$1" = "start" ] ; then
     exit $rc;
   fi
 
-  printf "Waiting for config service startup"
-  checkServerAlive $config_server_url
-
-  rc=$?
-  if [[ $rc != 0 ]];
-  then
-    printf "\nConfig service failed to start in $rc seconds! Please check $SERVICE_LOG for more information.\n"
-    exit 1;
-  fi
-
-  printf "\nConfig service started. You may visit $config_server_url for service status now!\n"
-
-  printf "Waiting for admin service startup"
-  checkServerAlive $admin_server_url
-
-  rc=$?
-  if [[ $rc != 0 ]];
-  then
-    printf "\nAdmin service failed to start in $rc seconds! Please check $SERVICE_LOG for more information.\n"
-    exit 1;
-  fi
-
-  printf "\nAdmin service started\n"
-
-  echo "==== starting portal ===="
-  echo "Portal logging file is $PORTAL_LOG"
-  export APP_NAME="apollo-portal"
-  export JAVA_OPTS="$PORTAL_JAVA_OPTS -Dlogging.file.name=./apollo-portal.log -Dserver.port=8070 -Dspring.profiles.group.github=$spring_profiles_group_github -Dspring.datasource.url=$apollo_portal_db_url -Dspring.datasource.username=$apollo_portal_db_username -Dspring.datasource.password=$apollo_portal_db_password"
-
-  if [[ -f $PORTAL_JAR ]]; then
-    rm -rf $PORTAL_JAR
-  fi
-
-  ln $JAR_FILE $PORTAL_JAR
-  chmod a+x $PORTAL_JAR
-
-  $PORTAL_JAR start --portal
-
-  rc=$?
-  if [[ $rc != 0 ]];
-  then
-    echo "Failed to start portal, return code: $rc. Please check $PORTAL_LOG for more information."
-    exit $rc;
-  fi
-
-  printf "Waiting for portal startup"
+  printf "Waiting for service startup"
   checkServerAlive $portal_url
 
   rc=$?
   if [[ $rc != 0 ]];
   then
-    printf "\nPortal failed to start in $rc seconds! Please check $PORTAL_LOG for more information.\n"
+    printf "\nService failed to start in $rc seconds! Please check $SERVICE_LOG for more information.\n"
     exit 1;
   fi
 
-  printf "\nPortal started. You can visit $portal_url now!\n"
+  printf "\nService started. You can visit $portal_url now!\n"
 
   exit 0;
 elif [ "$1" = "client" ] ; then
@@ -220,23 +162,16 @@ elif [ "$1" = "client" ] ; then
   fi
 
 elif [ "$1" = "stop" ] ; then
-  echo "==== stopping portal ===="
-  export APP_NAME="apollo-portal"
-  cd $PORTAL_DIR
-  ./$PORTAL_JAR_NAME stop
+  echo "==== stopping ===="
 
-  cd ..
-
-  echo "==== stopping service ===="
   export APP_NAME="apollo-service"
-  cd $SERVICE_DIR
-  ./$SERVICE_JAR_NAME stop
+  $SERVICE_JAR stop
 
 else
   echo "Usage: demo.sh ( commands ... )"
   echo "commands:"
-  echo "  start         start services and portal"
+  echo "  start         start services"
   echo "  client        start client demo program"
-  echo "  stop          stop services and portal"
+  echo "  stop          stop services"
   exit 1
 fi
