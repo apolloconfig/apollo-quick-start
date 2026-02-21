@@ -1,0 +1,124 @@
+name: Sync Apollo Release Assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Apollo release version (x.y.z)"
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_VERSION: ${{ inputs.release_version }}
+    steps:
+      - name: Validate release version
+        run: |
+          if [[ ! "${RELEASE_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "release_version must be in x.y.z format, got: ${RELEASE_VERSION}" >&2
+            exit 1
+          fi
+
+      - name: Checkout apollo-quick-start
+        uses: actions/checkout@v4
+
+      - name: Checkout Apollo release source
+        uses: actions/checkout@v4
+        with:
+          repository: apolloconfig/apollo
+          ref: v${{ env.RELEASE_VERSION }}
+          path: apollo-source
+          fetch-depth: 1
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      - name: Build Apollo assembly
+        working-directory: apollo-source
+        run: ./mvnw -B -pl apollo-assembly -am -DskipTests=true package
+
+      - name: Sync release assets
+        run: |
+          set -euo pipefail
+
+          JAR_PATH=""
+          for candidate in apollo-source/apollo-assembly/target/apollo-assembly-*.jar; do
+            if [[ "${candidate}" == *"-sources.jar" || "${candidate}" == *"-javadoc.jar" || "${candidate}" == *".jar.original" ]]; then
+              continue
+            fi
+            if [[ -f "${candidate}" ]]; then
+              JAR_PATH="${candidate}"
+              break
+            fi
+          done
+
+          if [[ -z "${JAR_PATH}" ]]; then
+            echo "No runnable apollo-assembly jar found under apollo-source/apollo-assembly/target" >&2
+            exit 1
+          fi
+
+          cp "${JAR_PATH}" apollo-all-in-one.jar
+
+          python3 scripts/sync_from_apollo_release.py \
+            --apollo-repo-root "${GITHUB_WORKSPACE}/apollo-source" \
+            --quick-start-root "${GITHUB_WORKSPACE}"
+
+          python3 scripts/sync_from_apollo_release.py \
+            --apollo-repo-root "${GITHUB_WORKSPACE}/apollo-source" \
+            --quick-start-root "${GITHUB_WORKSPACE}" \
+            --check
+
+      - id: detect_changes
+        name: Detect synced file changes
+        run: |
+          set -euo pipefail
+          git status --short
+          if git diff --quiet -- apollo-all-in-one.jar sql/apolloconfigdb.sql sql/apolloportaldb.sql; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: No change summary
+        if: steps.detect_changes.outputs.has_changes == 'false'
+        run: echo "No change detected for Apollo ${RELEASE_VERSION}; skipping PR creation."
+
+      - id: create_pr
+        name: Create or update sync pull request
+        if: steps.detect_changes.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(release): sync quick start assets to ${{ env.RELEASE_VERSION }}"
+          branch: codex/quick-start-sync-${{ env.RELEASE_VERSION }}
+          base: master
+          title: "chore(release): sync quick start assets to ${{ env.RELEASE_VERSION }}"
+          body: |
+            ## Summary
+            - sync `apollo-all-in-one.jar` from `apolloconfig/apollo@v${{ env.RELEASE_VERSION }}`
+            - sync `sql/apolloconfigdb.sql` and `sql/apolloportaldb.sql` from Apollo release SQL
+            - inject quick-start sample data overlays
+            - keep `configView.memberOnly.envs` fixed to `dev`
+
+            ## Source
+            - Apollo tag: `v${{ env.RELEASE_VERSION }}`
+            - Build command: `./mvnw -B -pl apollo-assembly -am -DskipTests=true package`
+          add-paths: |
+            apollo-all-in-one.jar
+            sql/apolloconfigdb.sql
+            sql/apolloportaldb.sql
+
+      - name: Pull request summary
+        if: steps.detect_changes.outputs.has_changes == 'true'
+        run: |
+          echo "PR Number: ${{ steps.create_pr.outputs.pull-request-number }}"
+          echo "PR URL: ${{ steps.create_pr.outputs.pull-request-url }}"
