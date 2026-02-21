@@ -27,6 +27,6 @@ apollo-service.jar
 *.log
 *.gz
 *.pid
-.apollo-quick-start-release-state.json
+.apollo-quick-start-release-state*.json
 __pycache__/
 *.pyc
