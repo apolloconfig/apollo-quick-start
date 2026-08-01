@@ -73,7 +73,8 @@ BASE_JAVA_OPTS="$JAVA_OPTS"
 CLIENT_JAVA_OPTS="$BASE_JAVA_OPTS -Dapollo.meta=$config_server_url"
 APOLLO_CONFIG_DB_CONFIG="-Dspring.config-datasource.url=$apollo_config_db_url -Dspring.config-datasource.username=$apollo_config_db_username -Dspring.config-datasource.password=$apollo_config_db_password"
 APOLLO_PORTAL_DB_CONFIG="-Dspring.portal-datasource.url=$apollo_portal_db_url -Dspring.portal-datasource.username=$apollo_portal_db_username -Dspring.portal-datasource.password=$apollo_portal_db_password"
-SERVER_JAVA_OPTS="$BASE_JAVA_OPTS -Dspring.profiles.active=github,database-discovery,auth -Dlogging.file.name=$SERVICE_LOG -Dspring.profiles.group.github=$spring_profiles_group_github $APOLLO_CONFIG_DB_CONFIG $APOLLO_PORTAL_DB_CONFIG"
+H2_CONSOLE_CONFIG="-Dspring.h2.console.enabled=false"
+SERVER_JAVA_OPTS="$BASE_JAVA_OPTS -Dspring.profiles.active=github,database-discovery,auth -Dlogging.file.name=$SERVICE_LOG -Dspring.profiles.group.github=$spring_profiles_group_github $APOLLO_CONFIG_DB_CONFIG $APOLLO_PORTAL_DB_CONFIG $H2_CONSOLE_CONFIG"
 
 function checkJava {
   if [[ -n "$JAVA_HOME" ]] && [[ -x "$JAVA_HOME/bin/java" ]];  then
