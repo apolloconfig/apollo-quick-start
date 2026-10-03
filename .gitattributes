@@ -1,1 +1,2 @@
 *.sh text eol=lf
+apollo-all-in-one.jar filter=lfs diff=lfs merge=lfs -text
