@@ -94,8 +94,8 @@ function checkJava {
   if [[ "$_java" ]]; then
       version=$("$_java" -version 2>&1 | awk -F '"' '/version/ {print $2}')
       version_in_digit=$(echo "$version" | awk -F. '{printf("%03d%03d",$1,$2);}')
-      if [[ $version_in_digit < 001008 ]]; then
-          echo "Java version is $version, please make sure java 1.8+ is in the path"
+      if [[ $version_in_digit < 017000 ]]; then
+          echo "Java version is $version, please make sure Java 17+ is in the path"
           exit 1
       fi
   fi
