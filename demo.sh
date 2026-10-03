@@ -48,6 +48,7 @@ LOG_FOLDER=${LOG_FOLDER:-.}
 LOG_FILENAME=${LOG_FILENAME:-console.log}
 STOP_WAIT_TIME=${STOP_WAIT_TIME:-60}
 LOG_APPENDERS=${LOG_APPENDERS:-FILE}
+RUN_AS_USER=${RUN_AS_USER:-}
 
 # =============== Please do not modify the following content =============== #
 
@@ -75,24 +76,80 @@ CLIENT_JAR=$CLIENT_DIR/apollo-demo.jar
 SERVICE_PID_DIR=$PID_FOLDER/apollo-service
 SERVICE_PID=$SERVICE_PID_DIR/apollo-service.pid
 SERVICE_CONSOLE_LOG=$LOG_FOLDER/$LOG_FILENAME
+SERVICE_LOCK=$SERVICE_PID_DIR/.lock
 
-# JAVA OPTS
-read -r -a BASE_JAVA_OPTS <<< "$JAVA_OPTS"
-read -r -a SERVICE_ARGS <<< "$RUN_ARGS"
-CLIENT_JAVA_OPTS=("${BASE_JAVA_OPTS[@]}" "-Dapollo.meta=$config_server_url")
-SERVER_JAVA_OPTS=(
-  "${BASE_JAVA_OPTS[@]}"
-  "-Dspring.profiles.active=github,database-discovery,auth"
-  "-Dlogging.file.name=$SERVICE_LOG"
-  "-Dspring.profiles.group.github=$spring_profiles_group_github"
-  "-Dspring.config-datasource.url=$apollo_config_db_url"
-  "-Dspring.config-datasource.username=$apollo_config_db_username"
-  "-Dspring.config-datasource.password=$apollo_config_db_password"
-  "-Dspring.portal-datasource.url=$apollo_portal_db_url"
-  "-Dspring.portal-datasource.username=$apollo_portal_db_username"
-  "-Dspring.portal-datasource.password=$apollo_portal_db_password"
-  "-Dspring.h2.console.enabled=false"
-)
+function parseOptions {
+  local encoded option
+  PARSED_OPTIONS=()
+  [[ "$1" =~ [^[:space:]] ]] || return 0
+  # xargs recognizes quotes without evaluating shell expansions or commands.
+  encoded=$(printf '%s\n' "$1" | xargs -E '' printf '%s\n' && printf '.') || {
+    echo "Invalid quoting in JVM/application options."
+    return 1
+  }
+  # The sentinel preserves trailing newlines, including explicitly empty arguments.
+  encoded=${encoded%.}
+  while IFS= read -r option; do
+    PARSED_OPTIONS+=("$option")
+  done < <(printf '%s' "$encoded")
+}
+
+function buildJavaOptions {
+  parseOptions "$JAVA_OPTS" || return 1
+  BASE_JAVA_OPTS=("${PARSED_OPTIONS[@]}")
+  parseOptions "$RUN_ARGS" || return 1
+  SERVICE_ARGS=("${PARSED_OPTIONS[@]}")
+  CLIENT_JAVA_OPTS=("${BASE_JAVA_OPTS[@]}" "-Dapollo.meta=$config_server_url")
+  SERVER_JAVA_OPTS=(
+    "${BASE_JAVA_OPTS[@]}"
+    "-Dspring.profiles.active=github,database-discovery,auth"
+    "-Dlogging.file.name=$SERVICE_LOG"
+    "-Dspring.profiles.group.github=$spring_profiles_group_github"
+    "-Dspring.config-datasource.url=$apollo_config_db_url"
+    "-Dspring.config-datasource.username=$apollo_config_db_username"
+    "-Dspring.config-datasource.password=$apollo_config_db_password"
+    "-Dspring.portal-datasource.url=$apollo_portal_db_url"
+    "-Dspring.portal-datasource.username=$apollo_portal_db_username"
+    "-Dspring.portal-datasource.password=$apollo_portal_db_password"
+    "-Dspring.h2.console.enabled=false"
+  )
+}
+
+function checkServiceTools {
+  local tool
+  for tool in ps "$@"; do
+    command -v "$tool" >/dev/null 2>&1 || {
+      echo "Required command not found: $tool"
+      return 1
+    }
+  done
+  if [[ "$windows" == "1" ]]; then
+    command -v powershell.exe >/dev/null 2>&1 || { echo "Required command not found: powershell.exe"; return 1; }
+  fi
+}
+
+function switchServiceUser {
+  local target_user=$RUN_AS_USER
+  local current_uid target_uid command
+  current_uid=$(id -u) || return 1
+  if [[ -z "$target_user" && "$current_uid" == "0" && -f "$SERVICE_JAR" ]]; then
+    target_user=$(ls -ld "$SERVICE_JAR" | awk '{print $3}')
+  fi
+  [[ -n "$target_user" ]] || return 0
+  target_uid=$(id -u "$target_user") || return 1
+  [[ "$target_uid" != "$current_uid" ]] || return 0
+  [[ "$current_uid" == "0" ]] || { echo "Cannot run as $target_user: current user is not root."; return 1; }
+  command -v su >/dev/null 2>&1 || { echo "Required command not found: su"; return 1; }
+  mkdir -p "$SERVICE_PID_DIR" "$LOG_FOLDER" || return 1
+  touch "$SERVICE_CONSOLE_LOG" || return 1
+  chown "$target_user" "$SERVICE_PID_DIR" "$SERVICE_CONSOLE_LOG" || return 1
+  printf -v command '%q ' "$CURRENT_DIR/demo.sh" "$@"
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    exec su -m "$target_user" -c "$command"
+  else
+    exec su -m -s /bin/bash "$target_user" -c "$command"
+  fi
+}
 
 function checkJava {
   if [[ -n "$JAVA_HOME" ]] && [[ -x "$JAVA_HOME/bin/java" ]];  then
@@ -118,6 +175,28 @@ function checkJava {
           exit 1
       fi
   fi
+  buildJavaOptions || exit 1
+}
+
+function withServiceLock {
+  mkdir -p "$SERVICE_PID_DIR" || return 1
+  local counter=0
+  until mkdir "$SERVICE_LOCK" 2>/dev/null; do
+    if (( counter >= 10 )); then
+      echo "Cannot acquire service lock: $SERVICE_LOCK. Check for another start/stop command or a stale lock."
+      return 1
+    fi
+    sleep 1
+    (( counter++ ))
+  done
+  trap 'rmdir "$SERVICE_LOCK" 2>/dev/null' EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  "$@"
+  local result=$?
+  rmdir "$SERVICE_LOCK" || return 1
+  trap - EXIT INT TERM
+  return "$result"
 }
 
 function isServiceRunning {
@@ -128,7 +207,14 @@ function isServiceRunning {
   local command
   local jar_path=$SERVICE_JAR
   if [[ "$windows" == "1" ]]; then
-    command=$(ps -p "$pid" -f 2>/dev/null) || return 1
+    local win_pid
+    win_pid=$(ps -p "$pid" -l 2>/dev/null | awk -v pid="$pid" '
+      NR==1 { for (i=1; i<=NF; i++) { if ($i=="PID") p=i; if ($i=="WINPID") w=i } }
+      NR>1 && p && w { for (i=1; i<=NF; i++) if ($i==pid) { print $(i+w-p); exit } }
+    ')
+    [[ "$win_pid" =~ ^[1-9][0-9]*$ ]] || return 1
+    command=$(powershell.exe -NoProfile -NonInteractive -Command \
+      "(Get-CimInstance Win32_Process -Filter 'ProcessId = $win_pid').CommandLine" 2>/dev/null) || return 1
     jar_path=$(cygpath -am "$SERVICE_JAR") || return 1
     command=${command//\\//}
   else
@@ -213,11 +299,13 @@ function checkServerAlive {
 }
 
 if [ "$1" = "start" ] ; then
+  checkServiceTools curl || exit 1
+  switchServiceUser "$@" || exit 1
   checkJava
   export LOG_APPENDERS
   echo "==== starting ===="
   echo "Service logging file is $SERVICE_LOG"
-  startService
+  withServiceLock startService
 
   rc=$?
   if [[ $rc != 0 ]];
@@ -240,6 +328,7 @@ if [ "$1" = "start" ] ; then
 
   exit 0;
 elif [ "$1" = "run" ] ; then
+  switchServiceUser "$@" || exit 1
   checkJava
   export LOG_APPENDERS
   # Keep Java in the foreground so containers forward signals and exit with it.
@@ -253,9 +342,10 @@ elif [ "$1" = "client" ] ; then
   fi
 
 elif [ "$1" = "stop" ] ; then
+  checkServiceTools || exit 1
   echo "==== stopping ===="
 
-  stopService
+  withServiceLock stopService
   exit $?
 
 else

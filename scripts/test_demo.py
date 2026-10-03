@@ -62,7 +62,7 @@ raise SystemExit(1)
 ''')
         self.env = {key: value for key, value in os.environ.items()
                     if not key.startswith(('APOLLO_', 'JAVA_', 'STUB_'))
-                    and key not in ('PID_FOLDER', 'LOG_FOLDER', 'LOG_FILENAME', 'RUN_ARGS', 'STOP_WAIT_TIME', 'LOG_APPENDERS')}
+                    and key not in ('PID_FOLDER', 'LOG_FOLDER', 'LOG_FILENAME', 'RUN_ARGS', 'RUN_AS_USER', 'STOP_WAIT_TIME', 'LOG_APPENDERS')}
         self.env.update(JAVA_HOME=str(self.bin.parent), PATH=str(self.bin) + os.pathsep + os.environ['PATH'],
                         STUB_STATE_DIR=str(self.root))
         self.processes: list[subprocess.Popen] = []
@@ -137,14 +137,17 @@ raise SystemExit(1)
 
     def test_config_paths_run_args_and_database_password_with_spaces(self) -> None:
         self.env.update(PID_FOLDER='pid files', LOG_FOLDER='log files', LOG_FILENAME='output.log',
-                        LOG_APPENDERS='CONSOLE', RUN_ARGS='--example=value',
-                        JAVA_OPTS='-Xmx128m -Dpattern=*', APOLLO_CONFIG_DB_PASSWORD='password with spaces')
+                        LOG_APPENDERS='CONSOLE', RUN_ARGS='--example="value with spaces"',
+                        JAVA_OPTS='-Xmx128m -Dpattern=* -DtrustStore="/tmp/my cert" -Dliteral="$(echo example)"',
+                        APOLLO_CONFIG_DB_PASSWORD='password with spaces')
         result = self.invoke('start')
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         args = self.wait_for_call()['args']
         self.assertIn('-Dspring.config-datasource.password=password with spaces', args)
         self.assertIn('-Dpattern=*', args)
-        self.assertEqual(args[-1], '--example=value')
+        self.assertIn('-DtrustStore=/tmp/my cert', args)
+        self.assertIn('-Dliteral=$(echo example)', args)
+        self.assertEqual(args[-1], '--example=value with spaces')
         self.assertEqual(self.calls()[0]['appenders'], 'CONSOLE')
         self.assertTrue((self.root / 'pid files/apollo-service/apollo-service.pid').exists())
         self.assertTrue((self.root / 'log files/output.log').exists())
@@ -157,6 +160,30 @@ raise SystemExit(1)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(int(self.pid_file.read_text()), self.wait_for_call()['pid'])
         self.assertEqual(self.invoke('stop').returncode, 0)
+
+    def test_concurrent_starts_launch_one_java_process(self) -> None:
+        processes = [subprocess.Popen([str(self.root / 'demo.sh'), 'start'], env=self.env,
+                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                     for _ in range(8)]
+        self.processes.extend(processes)
+        for process in processes:
+            stdout, stderr = process.communicate(timeout=15)
+            self.assertEqual(process.returncode, 0, stdout + stderr)
+        self.assertEqual(len(self.calls()), 1)
+        self.assertEqual(int(self.pid_file.read_text()), self.calls()[0]['pid'])
+        self.assertEqual(self.invoke('stop').returncode, 0)
+
+    def test_invalid_option_quoting_is_rejected(self) -> None:
+        self.env['JAVA_OPTS'] = '-Dexample="unterminated'
+        result = self.invoke('run')
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertFalse(self.calls())
+
+    def test_run_args_preserve_empty_values(self) -> None:
+        self.env.update(STUB_JAVA_FAIL='1', RUN_ARGS='--example "" --trailing ""')
+        result = self.invoke('run')
+        self.assertEqual(result.returncode, 7, result.stdout + result.stderr)
+        self.assertEqual(self.calls()[0]['args'][-4:], ['--example', '', '--trailing', ''])
 
     def test_stop_does_not_signal_unrelated_process(self) -> None:
         process = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])
@@ -171,23 +198,41 @@ raise SystemExit(1)
     def test_stop_without_pid_is_successful(self) -> None:
         self.assertEqual(self.invoke('stop').returncode, 0)
 
-    def test_mingw_uses_full_ps_listing_and_windows_classpath(self) -> None:
+    def test_mingw_uses_windows_pid_and_powershell_command_line(self) -> None:
         self.write_executable('uname', '#!/bin/bash\necho MINGW64_NT\n')
         self.write_executable('cygpath', '#!/bin/bash\nprintf "%s\\n" "${@: -1}"\n')
         actual_ps = shutil.which('ps')
         self.write_executable('ps', f'''#!/usr/bin/env python3
 import os, pathlib, subprocess, sys
-assert sys.argv[-1] == '-f', sys.argv
-pathlib.Path(os.environ['STUB_STATE_DIR'], 'ps-full').touch()
-raise SystemExit(subprocess.call([{actual_ps!r}, '-p', sys.argv[2], '-o', 'args=']))
+assert sys.argv[-1] == '-l', sys.argv
+pathlib.Path(os.environ['STUB_STATE_DIR'], 'ps-long').touch()
+print('PID PPID PGID WINPID TTY UID STIME COMMAND')
+print(sys.argv[2] + ' 1 1 ' + str(int(sys.argv[2]) + 1000000) + ' ? 1000 00:00 /java')
+''')
+        self.write_executable('powershell.exe', f'''#!/usr/bin/env python3
+import os, pathlib, re, subprocess, sys
+pathlib.Path(os.environ['STUB_STATE_DIR'], 'powershell-used').touch()
+win_pid = int(re.search(r'ProcessId = (\\d+)', sys.argv[-1]).group(1))
+raise SystemExit(subprocess.call([{actual_ps!r}, '-p', str(win_pid - 1000000), '-o', 'args=']))
 ''')
         result = self.invoke('start')
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         result = self.invoke('stop')
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertTrue((self.root / 'ps-full').exists())
+        self.assertTrue((self.root / 'ps-long').exists())
+        self.assertTrue((self.root / 'powershell-used').exists())
         self.assertEqual(self.invoke('client').returncode, 0)
         self.assertEqual(self.calls()[-1]['args'][1], str(self.root / 'client') + ';' + str(self.root / 'client/apollo-demo.jar'))
+
+    def test_missing_ps_is_rejected_before_starting_java(self) -> None:
+        # A non-executable directory named ps also makes command -v fail.
+        self.env['PATH'] = str(self.bin)
+        for name in ('dirname', 'uname'):
+            (self.bin / name).symlink_to(shutil.which(name))
+        result = self.invoke('start')
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn('Required command not found: ps', result.stdout)
+        self.assertFalse(self.calls())
 
     def test_run_execs_java_and_forwards_sigterm(self) -> None:
         process = subprocess.Popen([str(self.root / 'demo.sh'), 'run'], env=self.env,
