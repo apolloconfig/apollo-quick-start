@@ -26,6 +26,8 @@ jobs:
 
       - name: Checkout apollo-quick-start
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Checkout Apollo release source
         uses: actions/checkout@v4

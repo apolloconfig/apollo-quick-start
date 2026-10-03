@@ -29,6 +29,10 @@ jobs:
       -
         name: Checkout
         uses: actions/checkout@v3
+        with:
+          lfs: true
+      - name: Restore all-in-one JAR
+        run: git lfs checkout apollo-all-in-one.jar
       -
         name: Login to Docker Hub
         uses: docker/login-action@v2
