@@ -68,7 +68,9 @@ jobs:
             exit 1
           fi
 
-          cp "${JAR_PATH}" apollo-all-in-one.jar
+          python3 scripts/prepare_executable_jar.py \
+            --source "${JAR_PATH}" \
+            --target apollo-all-in-one.jar
 
           python3 scripts/sync_from_apollo_release.py \
             --apollo-repo-root "${GITHUB_WORKSPACE}/apollo-source" \
