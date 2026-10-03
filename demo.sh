@@ -270,6 +270,12 @@ function stopService {
   return 1
 }
 
+function removeFailedServicePid {
+  if [[ -f "$SERVICE_PID" && "$(cat "$SERVICE_PID")" == "$service_pid" ]]; then
+    rm -f "$SERVICE_PID"
+  fi
+}
+
 function checkServerAlive {
   declare -i counter=0
   declare -i max_counter=24 # 24*5=120s
@@ -280,7 +286,7 @@ function checkServerAlive {
   until [[ (( counter -ge max_counter )) || "$(curl -X GET --silent --connect-timeout 1 --max-time 2 --head "$SERVER_URL" | grep "HTTP")" != "" ]];
   do
     if ! isServiceRunning "$service_pid"; then
-      rm -f "$SERVICE_PID"
+      withServiceLock removeFailedServicePid
       return 1
     fi
     printf "."

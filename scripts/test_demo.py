@@ -179,6 +179,21 @@ raise SystemExit(1)
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertFalse(self.calls())
 
+    def test_stopped_startup_does_not_remove_replacement_pid(self) -> None:
+        first_env = dict(self.env, STUB_CURL_FAIL='1')
+        first = subprocess.Popen([str(self.root / 'demo.sh'), 'start'], env=first_env,
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.processes.append(first)
+        self.wait_for_call()
+        self.assertEqual(self.invoke('stop').returncode, 0)
+        self.assertEqual(self.invoke('start').returncode, 0)
+        replacement_pid = int(self.pid_file.read_text())
+        first.communicate(timeout=15)
+        self.assertEqual(first.returncode, 1)
+        self.assertTrue(self.pid_file.exists())
+        self.assertEqual(int(self.pid_file.read_text()), replacement_pid)
+        self.assertEqual(self.invoke('stop').returncode, 0)
+
     def test_run_args_preserve_empty_values(self) -> None:
         self.env.update(STUB_JAVA_FAIL='1', RUN_ARGS='--example "" --trailing ""')
         result = self.invoke('run')
