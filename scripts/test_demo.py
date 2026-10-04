@@ -213,7 +213,10 @@ raise SystemExit(1)
 import os, pathlib, subprocess, sys
 assert sys.argv[1] == '-p' and len(sys.argv) == 3, sys.argv
 pathlib.Path(os.environ['STUB_STATE_DIR'], 'pid-only-check').touch()
-raise SystemExit(subprocess.call([{actual_ps!r}, *sys.argv[1:]]))
+state = subprocess.run([{actual_ps!r}, *sys.argv[1:], '-o', 'stat='], capture_output=True, text=True)
+# Emulate Windows process disappearance even if the Linux test host retains a zombie.
+running = state.returncode == 0 and state.stdout.strip() and not state.stdout.lstrip().startswith('Z')
+raise SystemExit(0 if running else 1)
 ''')
         self.assertEqual(self.invoke('start').returncode, 0)
         self.assertEqual(self.invoke('stop').returncode, 0)
