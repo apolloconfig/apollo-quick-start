@@ -138,17 +138,16 @@ raise SystemExit(1)
 
     def test_config_paths_run_args_and_database_password_with_spaces(self) -> None:
         self.env.update(PID_FOLDER='pid files', LOG_FOLDER='log files', LOG_FILENAME='output.log',
-                        LOG_APPENDERS='CONSOLE', RUN_ARGS='--example="value with spaces"',
-                        JAVA_OPTS='-Xmx128m -Dpattern=* -DtrustStore="/tmp/my cert" -Dliteral="$(echo example)"',
+                        LOG_APPENDERS='CONSOLE', RUN_ARGS='--example=value --enabled',
+                        JAVA_OPTS='-Xmx128m -Dexample=value',
                         APOLLO_CONFIG_DB_PASSWORD='password with spaces')
         result = self.invoke('start')
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         args = self.wait_for_call()['args']
         self.assertIn('-Dspring.config-datasource.password=password with spaces', args)
-        self.assertIn('-Dpattern=*', args)
-        self.assertIn('-DtrustStore=/tmp/my cert', args)
-        self.assertIn('-Dliteral=$(echo example)', args)
-        self.assertEqual(args[-1], '--example=value with spaces')
+        self.assertIn('-Xmx128m', args)
+        self.assertIn('-Dexample=value', args)
+        self.assertEqual(args[-2:], ['--example=value', '--enabled'])
         self.assertEqual(self.calls()[0]['appenders'], 'CONSOLE')
         self.assertTrue((self.root / 'pid files/apollo-service/apollo-service.pid').exists())
         self.assertTrue((self.root / 'log files/output.log').exists())
@@ -162,75 +161,6 @@ raise SystemExit(1)
         self.assertEqual(int(self.pid_file.read_text()), self.wait_for_call()['pid'])
         self.assertEqual(self.invoke('stop').returncode, 0)
 
-    def test_concurrent_starts_launch_one_java_process(self) -> None:
-        processes = [subprocess.Popen([str(self.root / 'demo.sh'), 'start'], env=self.env,
-                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                     for _ in range(8)]
-        self.processes.extend(processes)
-        for process in processes:
-            stdout, stderr = process.communicate(timeout=15)
-            self.assertEqual(process.returncode, 0, stdout + stderr)
-        self.assertEqual(len(self.calls()), 1)
-        self.assertEqual(int(self.pid_file.read_text()), self.calls()[0]['pid'])
-        self.assertEqual(self.invoke('stop').returncode, 0)
-
-    def test_leftover_lock_directory_does_not_block_concurrent_starts(self) -> None:
-        (self.pid_file.parent / '.lock').mkdir(parents=True)
-        self.test_concurrent_starts_launch_one_java_process()
-
-    @unittest.skipIf(os.name == 'nt', 'uses Unix process-group signals')
-    def test_sigkill_releases_lock_without_losing_running_service(self) -> None:
-        self.assertEqual(self.invoke('start').returncode, 0)
-        actual_ps = shutil.which('ps')
-        self.write_executable('ps', f'''#!/usr/bin/env python3
-import os, pathlib, sys, time
-if os.environ.get('STUB_PS_BLOCK'):
-    pathlib.Path(os.environ['STUB_STATE_DIR'], 'lock-held').touch()
-    time.sleep(30)
-os.execv({actual_ps!r}, [{actual_ps!r}, *sys.argv[1:]])
-''')
-        process = subprocess.Popen([str(self.root / 'demo.sh'), 'stop'],
-                                   env=dict(self.env, STUB_PS_BLOCK='1'), start_new_session=True,
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        self.processes.append(process)
-        deadline = time.monotonic() + 5
-        while not (self.root / 'lock-held').exists() and time.monotonic() < deadline:
-            time.sleep(0.05)
-        self.assertTrue((self.root / 'lock-held').exists())
-        os.killpg(process.pid, signal.SIGKILL)
-        process.communicate(timeout=5)
-        self.assertEqual(process.returncode, -signal.SIGKILL)
-        self.assertTrue(self.pid_file.exists())
-        self.assertFalse((self.root / 'terminated').exists())
-        result = self.invoke('stop')
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertFalse(self.pid_file.exists())
-
-    @unittest.skipIf(os.name == 'nt', 'uses Unix advisory locking')
-    def test_live_lock_is_not_reclaimed(self) -> None:
-        self.assertEqual(self.invoke('start').returncode, 0)
-        lock_file = self.pid_file.parent / '.lock/process.lock'
-        holder = subprocess.Popen([sys.executable, '-c', '''
-import fcntl, pathlib, sys, time
-with open(sys.argv[1], 'w') as lock:
-    fcntl.flock(lock, fcntl.LOCK_EX)
-    pathlib.Path(sys.argv[2]).touch()
-    time.sleep(30)
-''', str(lock_file), str(self.root / 'lock-held')])
-        self.processes.append(holder)
-        deadline = time.monotonic() + 5
-        while not (self.root / 'lock-held').exists() and time.monotonic() < deadline:
-            time.sleep(0.05)
-        self.assertTrue((self.root / 'lock-held').exists())
-        result = self.invoke('stop')
-        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-        self.assertIn('Cannot acquire service lock', result.stdout)
-        self.assertTrue(self.pid_file.exists())
-        self.assertFalse((self.root / 'terminated').exists())
-        holder.terminate()
-        holder.wait(timeout=5)
-        self.assertEqual(self.invoke('stop').returncode, 0)
-
     def test_stop_timeout_with_leading_zeros_is_decimal(self) -> None:
         for timeout, delay in [('010', '8.25'), ('08', '0.1'), ('09', '0.1')]:
             with self.subTest(timeout=timeout):
@@ -240,69 +170,22 @@ with open(sys.argv[1], 'w') as lock:
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertFalse(self.pid_file.exists())
 
-    def test_invalid_option_quoting_is_rejected(self) -> None:
-        self.env['JAVA_OPTS'] = '-Dexample="unterminated'
-        result = self.invoke('run')
-        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-        self.assertFalse(self.calls())
-
-    def test_stopped_startup_does_not_remove_replacement_pid(self) -> None:
-        first_env = dict(self.env, STUB_CURL_FAIL='1')
-        first = subprocess.Popen([str(self.root / 'demo.sh'), 'start'], env=first_env,
-                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        self.processes.append(first)
-        self.wait_for_call()
-        self.assertEqual(self.invoke('stop').returncode, 0)
-        self.assertEqual(self.invoke('start').returncode, 0)
-        replacement_pid = int(self.pid_file.read_text())
-        first.communicate(timeout=15)
-        self.assertEqual(first.returncode, 1)
-        self.assertTrue(self.pid_file.exists())
-        self.assertEqual(int(self.pid_file.read_text()), replacement_pid)
-        self.assertEqual(self.invoke('stop').returncode, 0)
-
-    def test_run_args_preserve_empty_values(self) -> None:
-        self.env.update(STUB_JAVA_FAIL='1', RUN_ARGS='--example "" --trailing ""')
-        result = self.invoke('run')
-        self.assertEqual(result.returncode, 7, result.stdout + result.stderr)
-        self.assertEqual(self.calls()[0]['args'][-4:], ['--example', '', '--trailing', ''])
-
-    def test_stop_does_not_signal_unrelated_process(self) -> None:
-        process = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])
-        self.processes.append(process)
-        self.pid_file.parent.mkdir()
-        self.pid_file.write_text(str(process.pid) + '\n')
-        result = self.invoke('stop')
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIsNone(process.poll())
-        self.assertFalse(self.pid_file.exists())
-
     def test_stop_without_pid_is_successful(self) -> None:
         self.assertEqual(self.invoke('stop').returncode, 0)
 
-    def test_mingw_uses_windows_pid_and_powershell_command_line(self) -> None:
+    def test_mingw_uses_pid_only_process_checks(self) -> None:
         self.write_executable('uname', '#!/bin/bash\necho MINGW64_NT\n')
         self.write_executable('cygpath', '#!/bin/bash\nprintf "%s\\n" "${@: -1}"\n')
         actual_ps = shutil.which('ps')
         self.write_executable('ps', f'''#!/usr/bin/env python3
 import os, pathlib, subprocess, sys
-assert sys.argv[-1] == '-l', sys.argv
-pathlib.Path(os.environ['STUB_STATE_DIR'], 'ps-long').touch()
-print('PID PPID PGID WINPID TTY UID STIME COMMAND')
-print(sys.argv[2] + ' 1 1 ' + str(int(sys.argv[2]) + 1000000) + ' ? 1000 00:00 /java')
+assert sys.argv[1] == '-p' and len(sys.argv) == 3, sys.argv
+pathlib.Path(os.environ['STUB_STATE_DIR'], 'pid-only-check').touch()
+raise SystemExit(subprocess.call([{actual_ps!r}, *sys.argv[1:]]))
 ''')
-        self.write_executable('powershell.exe', f'''#!/usr/bin/env python3
-import os, pathlib, re, subprocess, sys
-pathlib.Path(os.environ['STUB_STATE_DIR'], 'powershell-used').touch()
-win_pid = int(re.search(r'ProcessId = (\\d+)', sys.argv[-1]).group(1))
-raise SystemExit(subprocess.call([{actual_ps!r}, '-p', str(win_pid - 1000000), '-o', 'args=']))
-''')
-        result = self.invoke('start')
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        result = self.invoke('stop')
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertTrue((self.root / 'ps-long').exists())
-        self.assertTrue((self.root / 'powershell-used').exists())
+        self.assertEqual(self.invoke('start').returncode, 0)
+        self.assertEqual(self.invoke('stop').returncode, 0)
+        self.assertTrue((self.root / 'pid-only-check').exists())
         self.assertEqual(self.invoke('client').returncode, 0)
         self.assertEqual(self.calls()[-1]['args'][1], str(self.root / 'client') + ';' + str(self.root / 'client/apollo-demo.jar'))
 
@@ -316,15 +199,6 @@ raise SystemExit(subprocess.call([{actual_ps!r}, '-p', str(win_pid - 1000000), '
         self.assertIn('Required command not found: ps', result.stdout)
         self.assertFalse(self.calls())
 
-    def test_missing_lock_tools_is_rejected_before_starting_java(self) -> None:
-        self.env['PATH'] = str(self.bin)
-        for name in ('dirname', 'uname', 'ps'):
-            (self.bin / name).symlink_to(shutil.which(name))
-        result = self.invoke('start')
-        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-        self.assertIn('Required command not found: flock or Perl', result.stdout)
-        self.assertFalse(self.calls())
-
     def test_linux_privilege_drop_requires_setpriv_before_launch(self) -> None:
         self.env.update(PATH=str(self.bin), RUN_AS_USER='apollo-run')
         (self.bin / 'dirname').symlink_to(shutil.which('dirname'))
@@ -334,14 +208,6 @@ raise SystemExit(subprocess.call([{actual_ps!r}, '-p', str(win_pid - 1000000), '
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn('Required command not found: setpriv', result.stdout)
         self.assertFalse(self.calls())
-
-    @unittest.skipUnless(shutil.which('perl'), 'requires Perl for the flock fallback')
-    def test_perl_lock_fallback_preserves_process_lifecycle(self) -> None:
-        self.env['PATH'] = str(self.bin)
-        for name in ('awk', 'cat', 'chown', 'dirname', 'grep', 'id', 'ls', 'mkdir',
-                     'nohup', 'perl', 'ps', 'python3', 'rm', 'sleep', 'touch', 'uname', 'xargs'):
-            (self.bin / name).symlink_to(shutil.which(name))
-        self.test_plain_jar_start_duplicate_start_and_graceful_stop()
 
     def test_run_execs_java_and_forwards_sigterm(self) -> None:
         process = subprocess.Popen([str(self.root / 'demo.sh'), 'run'], env=self.env,
@@ -358,11 +224,37 @@ raise SystemExit(subprocess.call([{actual_ps!r}, '-p', str(win_pid - 1000000), '
         self.env['STUB_JAVA_FAIL'] = '1'
         self.assertEqual(self.invoke('run').returncode, 7)
 
-    def test_start_reports_early_java_failure(self) -> None:
-        self.env.update(STUB_JAVA_FAIL='1', STUB_CURL_FAIL='1')
+    def test_start_uses_legacy_http_timeout_and_retains_pid_until_stop(self) -> None:
+        self.env['STUB_CURL_FAIL'] = '1'
+        self.write_executable('sleep', '#!/bin/bash\nexit 0\n')
         result = self.invoke('start')
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-        self.assertIn('Service failed to start', result.stdout)
+        self.assertIn('Service failed to start in 120 seconds', result.stdout)
+        self.assertIn('Waiting for service startup' + '.' * 24, result.stdout)
+        self.assertTrue(self.pid_file.exists())
+        # Restore real sleep so graceful-stop polling allows the mock JVM to exit.
+        (self.bin / 'sleep').unlink()
+        self.assertEqual(self.invoke('stop').returncode, 0)
+        self.assertFalse(self.pid_file.exists())
+
+    def test_user_options_retain_legacy_whitespace_splitting(self) -> None:
+        self.env.update(STUB_JAVA_FAIL='1', JAVA_OPTS='-Xmx128m -Dexample="two words"',
+                        RUN_ARGS='--example "" --literal=$(echo_example)')
+        result = self.invoke('run')
+        self.assertEqual(result.returncode, 7, result.stdout + result.stderr)
+        args = self.calls()[0]['args']
+        self.assertIn('-Dexample="two', args)
+        self.assertIn('words"', args)
+        self.assertEqual(args[-3:], ['--example', '""', '--literal=$(echo_example)'])
+
+    def test_abandoned_lock_directory_does_not_block_start(self) -> None:
+        (self.pid_file.parent / '.lock').mkdir(parents=True)
+        self.test_plain_jar_start_duplicate_start_and_graceful_stop()
+
+    def test_stop_discards_invalid_pid(self) -> None:
+        self.pid_file.parent.mkdir()
+        self.pid_file.write_text('invalid\n')
+        self.assertEqual(self.invoke('stop').returncode, 0)
         self.assertFalse(self.pid_file.exists())
 
     def test_client_uses_selected_java_and_quoted_classpath(self) -> None:

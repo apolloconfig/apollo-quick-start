@@ -9,18 +9,10 @@ Apollo 3.0.0 需要 Java 17 或更高版本。`apollo-all-in-one.jar` 使用 [Gi
 
 `demo.sh` 使用 `java -jar` 启动 JAR。进程和日志默认值位于脚本的配置区，可通过 `PID_FOLDER`、`LOG_FOLDER`、`LOG_FILENAME`、`LOG_APPENDERS` 或 `STOP_WAIT_TIME` 环境变量覆盖。使用 `./demo.sh start` / `./demo.sh stop` 在后台启动和停止服务，或使用 `./demo.sh run` 在前台运行。Docker 镜像采用前台运行方式，使 Java 能收到容器停止信号。发布同步流程直接复制上游 JAR，保持其内容不变。
 
-Quote option values containing spaces inside `JAVA_OPTS` or `RUN_ARGS`, for example `JAVA_OPTS='-Xmx512m -Dexample="/path with spaces/value"'`. Options are parsed as quoted words without evaluating shell commands or variable expansions.
+`JAVA_OPTS` and `RUN_ARGS` retain the old launcher's whitespace-separated option format, for example `JAVA_OPTS='-Xms128m -Xmx512m'`. Quotes inside these variables are passed literally. Run background `start` and `stop` commands sequentially; they check whether the recorded PID exists, as the old launcher did. Startup continues to poll the Portal endpoint for up to 120 seconds. `STOP_WAIT_TIME` is interpreted as decimal seconds, including values with leading zeros.
 
-`JAVA_OPTS` 或 `RUN_ARGS` 中包含空格的参数值需要使用引号，例如 `JAVA_OPTS='-Xmx512m -Dexample="/path with spaces/value"'`。脚本按带引号的单词解析参数，不执行其中的 shell 命令或变量展开。
+`JAVA_OPTS` 和 `RUN_ARGS` 延续旧启动器按空白分隔参数的格式，例如 `JAVA_OPTS='-Xms128m -Xmx512m'`；变量内部的引号会按原样传递。后台 `start` 和 `stop` 命令应顺序执行，和旧启动器一样通过记录的 PID 是否存在判断进程状态。启动时继续等待 Portal HTTP 响应，最长 120 秒。`STOP_WAIT_TIME` 按十进制秒数解析，也支持带前导零的值。
 
-Background operation requires `ps`, `curl`, and either `flock` or Perl with native `flock` support; option parsing requires `xargs`. macOS and MSYS/Cygwin can use Perl instead of the `flock` command. Git Bash/Cygwin also uses Windows PowerShell for process identification.
+Background operation requires `ps` and `curl`. When started as root, Java runs as the JAR owner by default; set `RUN_AS_USER` to select another account. Background startup uses `su`; Linux foreground privilege dropping uses `setpriv` from `util-linux` (included in the Docker image) to preserve Java as PID 1. The runtime user needs write access to the configured log locations.
 
-后台运行需要 `ps`、`curl`，以及 `flock` 或支持原生 `flock` 的 Perl；参数解析需要 `xargs`。macOS 和 MSYS/Cygwin 可使用 Perl 替代 `flock` 命令，Git Bash/Cygwin 还使用 Windows PowerShell 识别进程。
-
-Service locks are released automatically when the command exits, including after SIGKILL; a leftover `.lock` directory does not block later commands. `STOP_WAIT_TIME` is interpreted as decimal seconds, including values with leading zeros.
-
-服务锁会在命令退出时自动释放，包括被 SIGKILL 终止的情况；残留的 `.lock` 目录不会阻塞后续命令。`STOP_WAIT_TIME` 按十进制秒数解析，也支持带前导零的值。
-
-When started as root, Java runs as the JAR owner by default; set `RUN_AS_USER` to select another account. On Linux, privilege dropping requires `setpriv` from `util-linux` (included in the Docker image), which preserves Java as PID 1 in foreground containers. The runtime user needs write access to the configured log locations.
-
-以 root 启动时，默认使用 JAR 所属用户运行 Java，可通过 `RUN_AS_USER` 指定其他用户。Linux 下切换用户需要 `util-linux` 提供的 `setpriv`（Docker 镜像已包含），使前台容器中的 Java 仍然是 PID 1。运行用户需要对配置的日志位置具有写权限。
+后台运行需要 `ps` 和 `curl`。以 root 启动时，默认使用 JAR 所属用户运行 Java，可通过 `RUN_AS_USER` 指定其他用户。后台启动使用 `su`；Linux 前台运行时切换用户使用 `util-linux` 提供的 `setpriv`（Docker 镜像已包含），使 Java 仍然是 PID 1。运行用户需要对配置的日志位置具有写权限。

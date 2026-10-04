@@ -25,6 +25,7 @@ class DemoDockerTest(unittest.TestCase):
         root.chmod(0o755)
         java = root / 'bin/java'
         java.parent.mkdir()
+        java.parent.chmod(0o755)
         java.write_text('''#!/bin/bash
 if [[ "$1" == -version ]]; then
   echo 'openjdk version "17.0.20"' >&2

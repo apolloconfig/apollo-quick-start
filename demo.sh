@@ -76,44 +76,14 @@ CLIENT_JAR=$CLIENT_DIR/apollo-demo.jar
 SERVICE_PID_DIR=$PID_FOLDER/apollo-service
 SERVICE_PID=$SERVICE_PID_DIR/apollo-service.pid
 SERVICE_CONSOLE_LOG=$LOG_FOLDER/$LOG_FILENAME
-SERVICE_LOCK=$SERVICE_PID_DIR/.lock
 
-function parseOptions {
-  local encoded option
-  PARSED_OPTIONS=()
-  [[ "$1" =~ [^[:space:]] ]] || return 0
-  # xargs recognizes quotes without evaluating shell expansions or commands.
-  encoded=$(printf '%s\n' "$1" | xargs -E '' printf '%s\n' && printf '.') || {
-    echo "Invalid quoting in JVM/application options."
-    return 1
-  }
-  # The sentinel preserves trailing newlines, including explicitly empty arguments.
-  encoded=${encoded%.}
-  while IFS= read -r option; do
-    PARSED_OPTIONS+=("$option")
-  done < <(printf '%s' "$encoded")
-}
-
-function buildJavaOptions {
-  parseOptions "$JAVA_OPTS" || return 1
-  BASE_JAVA_OPTS=("${PARSED_OPTIONS[@]}")
-  parseOptions "$RUN_ARGS" || return 1
-  SERVICE_ARGS=("${PARSED_OPTIONS[@]}")
-  CLIENT_JAVA_OPTS=("${BASE_JAVA_OPTS[@]}" "-Dapollo.meta=$config_server_url")
-  SERVER_JAVA_OPTS=(
-    "${BASE_JAVA_OPTS[@]}"
-    "-Dspring.profiles.active=github,database-discovery,auth"
-    "-Dlogging.file.name=$SERVICE_LOG"
-    "-Dspring.profiles.group.github=$spring_profiles_group_github"
-    "-Dspring.config-datasource.url=$apollo_config_db_url"
-    "-Dspring.config-datasource.username=$apollo_config_db_username"
-    "-Dspring.config-datasource.password=$apollo_config_db_password"
-    "-Dspring.portal-datasource.url=$apollo_portal_db_url"
-    "-Dspring.portal-datasource.username=$apollo_portal_db_username"
-    "-Dspring.portal-datasource.password=$apollo_portal_db_password"
-    "-Dspring.h2.console.enabled=false"
-  )
-}
+# JAVA OPTS
+BASE_JAVA_OPTS="$JAVA_OPTS"
+CLIENT_JAVA_OPTS="$BASE_JAVA_OPTS -Dapollo.meta=$config_server_url"
+APOLLO_CONFIG_DB_CONFIG=("-Dspring.config-datasource.url=$apollo_config_db_url" "-Dspring.config-datasource.username=$apollo_config_db_username" "-Dspring.config-datasource.password=$apollo_config_db_password")
+APOLLO_PORTAL_DB_CONFIG=("-Dspring.portal-datasource.url=$apollo_portal_db_url" "-Dspring.portal-datasource.username=$apollo_portal_db_username" "-Dspring.portal-datasource.password=$apollo_portal_db_password")
+H2_CONSOLE_CONFIG="-Dspring.h2.console.enabled=false"
+SERVER_JAVA_OPTS=($BASE_JAVA_OPTS "-Dspring.profiles.active=github,database-discovery,auth" "-Dlogging.file.name=$SERVICE_LOG" "-Dspring.profiles.group.github=$spring_profiles_group_github" "${APOLLO_CONFIG_DB_CONFIG[@]}" "${APOLLO_PORTAL_DB_CONFIG[@]}" "$H2_CONSOLE_CONFIG")
 
 function checkServiceTools {
   local tool
@@ -123,16 +93,6 @@ function checkServiceTools {
       return 1
     }
   done
-  if ! command -v flock >/dev/null 2>&1; then
-    command -v perl >/dev/null 2>&1 || { echo "Required command not found: flock or Perl with native flock support"; return 1; }
-    perl -MConfig -e 'exit($Config{d_flock} eq "define" ? 0 : 1)' || {
-      echo "Background operation requires flock or Perl with native flock support."
-      return 1
-    }
-  fi
-  if [[ "$windows" == "1" ]]; then
-    command -v powershell.exe >/dev/null 2>&1 || { echo "Required command not found: powershell.exe"; return 1; }
-  fi
 }
 
 function switchServiceUser {
@@ -146,7 +106,7 @@ function switchServiceUser {
   target_uid=$(id -u "$target_user") || return 1
   [[ "$target_uid" != "$current_uid" ]] || return 0
   [[ "$current_uid" == "0" ]] || { echo "Cannot run as $target_user: current user is not root."; return 1; }
-  if [[ "$(uname -s)" == "Linux" ]]; then
+  if [[ "$1" == "run" && "$(uname -s)" == "Linux" ]]; then
     command -v setpriv >/dev/null 2>&1 || { echo "Required command not found: setpriv (util-linux)"; return 1; }
     target_gid=$(id -g "$target_user") || return 1
   else
@@ -155,7 +115,7 @@ function switchServiceUser {
   mkdir -p "$SERVICE_PID_DIR" "$LOG_FOLDER" || return 1
   touch "$SERVICE_CONSOLE_LOG" || return 1
   chown "$target_user" "$SERVICE_PID_DIR" "$SERVICE_CONSOLE_LOG" || return 1
-  if [[ "$(uname -s)" == "Linux" ]]; then
+  if [[ "$1" == "run" && "$(uname -s)" == "Linux" ]]; then
     # Replace the launcher instead of leaving su in front of Java with a 2s stop limit.
     exec setpriv --reuid "$target_uid" --regid "$target_gid" --init-groups "$CURRENT_DIR/demo.sh" "$@"
   fi
@@ -191,64 +151,10 @@ function checkJava {
           exit 1
       fi
   fi
-  buildJavaOptions || exit 1
-}
-
-function withServiceLock {
-  # Keep one stable inode, including when an old release left an empty .lock directory.
-  # The OS releases the advisory lock on exit, even after SIGKILL or a host restart.
-  mkdir -p "$SERVICE_LOCK" || return 1
-  exec 9>"$SERVICE_LOCK/process.lock" || return 1
-  local result
-  if command -v flock >/dev/null 2>&1; then
-    flock -w 10 9
-    result=$?
-  else
-    # macOS and MSYS/Cygwin provide Perl but may not provide the flock command.
-    # Native flock locks belong to the open file description shared with this shell.
-    perl -MFcntl=:flock -e '
-      open(my $lock, "<&=9") or die "Cannot open lock descriptor: $!\n";
-      for my $attempt (0..10) {
-        exit 0 if flock($lock, LOCK_EX | LOCK_NB);
-        sleep 1 if $attempt < 10;
-      }
-      exit 1;
-    '
-    result=$?
-  fi
-  if [[ "$result" != 0 ]]; then
-    exec 9>&-
-    echo "Cannot acquire service lock: $SERVICE_LOCK. Check for another start/stop command."
-    return 1
-  fi
-  "$@"
-  result=$?
-  exec 9>&-
-  return "$result"
 }
 
 function isServiceRunning {
-  local pid=$1
-  [[ "$pid" =~ ^[1-9][0-9]*$ ]] || return 1
-  kill -0 "$pid" 2>/dev/null || return 1
-  # A stale/reused PID must not cause us to stop an unrelated process.
-  local command
-  local jar_path=$SERVICE_JAR
-  if [[ "$windows" == "1" ]]; then
-    local win_pid
-    win_pid=$(ps -p "$pid" -l 2>/dev/null | awk -v pid="$pid" '
-      NR==1 { for (i=1; i<=NF; i++) { if ($i=="PID") p=i; if ($i=="WINPID") w=i } }
-      NR>1 && p && w { for (i=1; i<=NF; i++) if ($i==pid) { print $(i+w-p); exit } }
-    ')
-    [[ "$win_pid" =~ ^[1-9][0-9]*$ ]] || return 1
-    command=$(powershell.exe -NoProfile -NonInteractive -Command \
-      "(Get-CimInstance Win32_Process -Filter 'ProcessId = $win_pid').CommandLine" 2>/dev/null) || return 1
-    jar_path=$(cygpath -am "$SERVICE_JAR") || return 1
-    command=${command//\\//}
-  else
-    command=$(ps -p "$pid" -o args= 2>/dev/null) || return 1
-  fi
-  [[ "$command" == *java* && "$command" == *"$jar_path"* ]]
+  [[ "$1" =~ ^[1-9][0-9]*$ ]] && ps -p "$1" > /dev/null 2>&1
 }
 
 function startService {
@@ -264,8 +170,8 @@ function startService {
   [[ -f "$SERVICE_JAR" ]] || { echo "JAR not found: $SERVICE_JAR"; return 1; }
   mkdir -p "$SERVICE_PID_DIR" "$LOG_FOLDER" || return 1
   touch "$SERVICE_CONSOLE_LOG" || return 1
-  nohup "$_java" "${SERVER_JAVA_OPTS[@]}" -jar "$SERVICE_JAR" "${SERVICE_ARGS[@]}" \
-    >> "$SERVICE_CONSOLE_LOG" 2>&1 < /dev/null 9>&- &
+  nohup "$_java" "${SERVER_JAVA_OPTS[@]}" -jar "$SERVICE_JAR" $RUN_ARGS \
+    >> "$SERVICE_CONSOLE_LOG" 2>&1 < /dev/null &
   service_pid=$!
   if ! printf '%s\n' "$service_pid" > "$SERVICE_PID"; then
     kill "$service_pid" 2>/dev/null
@@ -279,7 +185,7 @@ function stopService {
   local pid
   pid=$(cat "$SERVICE_PID")
   if ! isServiceRunning "$pid"; then
-    echo "Not running (no matching Apollo process for PID $pid). Removing stale pid file."
+    echo "Not running (process $pid). Removing stale pid file."
     rm -f "$SERVICE_PID"
     return $?
   fi
@@ -299,12 +205,6 @@ function stopService {
   return 1
 }
 
-function removeFailedServicePid {
-  if [[ -f "$SERVICE_PID" && "$(cat "$SERVICE_PID")" == "$service_pid" ]]; then
-    rm -f "$SERVICE_PID"
-  fi
-}
-
 function checkServerAlive {
   declare -i counter=0
   declare -i max_counter=24 # 24*5=120s
@@ -314,10 +214,6 @@ function checkServerAlive {
 
   until [[ (( counter -ge max_counter )) || "$(curl -X GET --silent --connect-timeout 1 --max-time 2 --head "$SERVER_URL" | grep "HTTP")" != "" ]];
   do
-    if ! isServiceRunning "$service_pid"; then
-      withServiceLock removeFailedServicePid
-      return 1
-    fi
     printf "."
     counter+=1
     sleep 5
@@ -340,7 +236,7 @@ if [ "$1" = "start" ] ; then
   export LOG_APPENDERS
   echo "==== starting ===="
   echo "Service logging file is $SERVICE_LOG"
-  withServiceLock startService
+  startService
 
   rc=$?
   if [[ $rc != 0 ]];
@@ -355,7 +251,7 @@ if [ "$1" = "start" ] ; then
   rc=$?
   if [[ $rc != 0 ]];
   then
-    printf "\nService failed to start! Please check %s and %s for more information.\n" "$SERVICE_CONSOLE_LOG" "$SERVICE_LOG"
+    printf "\nService failed to start in $rc seconds! Please check %s and %s for more information.\n" "$SERVICE_CONSOLE_LOG" "$SERVICE_LOG"
     exit 1;
   fi
 
@@ -367,20 +263,20 @@ elif [ "$1" = "run" ] ; then
   checkJava
   export LOG_APPENDERS
   # Keep Java in the foreground so containers forward signals and exit with it.
-  exec "$_java" "${SERVER_JAVA_OPTS[@]}" -jar "$SERVICE_JAR" "${SERVICE_ARGS[@]}"
+  exec "$_java" "${SERVER_JAVA_OPTS[@]}" -jar "$SERVICE_JAR" $RUN_ARGS
 elif [ "$1" = "client" ] ; then
   checkJava
   if [ "$windows" == "1" ]; then
-    "$_java" -classpath "$CLIENT_DIR;$CLIENT_JAR" "${CLIENT_JAVA_OPTS[@]}" com.ctrip.framework.apollo.demo.api.SimpleApolloConfigDemo
+    "$_java" -classpath "$CLIENT_DIR;$CLIENT_JAR" $CLIENT_JAVA_OPTS com.ctrip.framework.apollo.demo.api.SimpleApolloConfigDemo
   else
-    "$_java" -classpath "$CLIENT_DIR:$CLIENT_JAR" "${CLIENT_JAVA_OPTS[@]}" com.ctrip.framework.apollo.demo.api.SimpleApolloConfigDemo
+    "$_java" -classpath "$CLIENT_DIR:$CLIENT_JAR" $CLIENT_JAVA_OPTS com.ctrip.framework.apollo.demo.api.SimpleApolloConfigDemo
   fi
 
 elif [ "$1" = "stop" ] ; then
   checkServiceTools || exit 1
   echo "==== stopping ===="
 
-  withServiceLock stopService
+  stopService
   exit $?
 
 else
