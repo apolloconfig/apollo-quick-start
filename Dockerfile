@@ -10,6 +10,9 @@ FROM eclipse-temurin:17-jre
 
 LABEL maintainer="nobodyiam<https://github.com/nobodyiam>"
 
+# Show application startup and failure logs in docker logs while retaining file logs.
+ENV LOG_APPENDERS=FILE,CONSOLE
+
 # Copy necessary files into the image
 COPY apollo-all-in-one.jar /apollo-quick-start/apollo-all-in-one.jar
 COPY client /apollo-quick-start/client

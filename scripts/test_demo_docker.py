@@ -39,6 +39,7 @@ shutdown() {
 }
 trap shutdown TERM
 echo "READY pid=$$ uid=$(id -u)"
+echo "LOG_APPENDERS=$LOG_APPENDERS"
 while :; do sleep .1; done
 ''')
         java.chmod(0o755)
@@ -74,6 +75,11 @@ while :; do sleep .1; done
 
     def test_default_foreground_process_remains_pid_one(self) -> None:
         self.assert_graceful_stop(0)
+        self.assertIn('LOG_APPENDERS=FILE,CONSOLE', self.docker('logs', self.container))
+
+    def test_log_appenders_can_be_overridden(self) -> None:
+        self.assert_graceful_stop(0, '-e', 'LOG_APPENDERS=FILE')
+        self.assertIn('LOG_APPENDERS=FILE\n', self.docker('logs', self.container))
 
     def test_run_as_user_remains_pid_one_and_finishes_slow_shutdown(self) -> None:
         self.assert_graceful_stop(65534, '-e', 'RUN_AS_USER=nobody')
