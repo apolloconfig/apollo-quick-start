@@ -13,6 +13,14 @@ Quote option values containing spaces inside `JAVA_OPTS` or `RUN_ARGS`, for exam
 
 `JAVA_OPTS` 或 `RUN_ARGS` 中包含空格的参数值需要使用引号，例如 `JAVA_OPTS='-Xmx512m -Dexample="/path with spaces/value"'`。脚本按带引号的单词解析参数，不执行其中的 shell 命令或变量展开。
 
-Background operation requires `ps` and `curl`; option parsing requires `xargs`. Git Bash/Cygwin also uses Windows PowerShell for process identification. When started as root, Java runs as the JAR owner by default; set `RUN_AS_USER` to select another account.
+Background operation requires `ps`, `curl`, and either `flock` or Perl with native `flock` support; option parsing requires `xargs`. macOS and MSYS/Cygwin can use Perl instead of the `flock` command. Git Bash/Cygwin also uses Windows PowerShell for process identification.
 
-后台运行需要 `ps` 和 `curl`，参数解析需要 `xargs`；Git Bash/Cygwin 还使用 Windows PowerShell 识别进程。以 root 启动时，默认使用 JAR 所属用户运行 Java，可通过 `RUN_AS_USER` 指定其他用户。
+后台运行需要 `ps`、`curl`，以及 `flock` 或支持原生 `flock` 的 Perl；参数解析需要 `xargs`。macOS 和 MSYS/Cygwin 可使用 Perl 替代 `flock` 命令，Git Bash/Cygwin 还使用 Windows PowerShell 识别进程。
+
+Service locks are released automatically when the command exits, including after SIGKILL; a leftover `.lock` directory does not block later commands. `STOP_WAIT_TIME` is interpreted as decimal seconds, including values with leading zeros.
+
+服务锁会在命令退出时自动释放，包括被 SIGKILL 终止的情况；残留的 `.lock` 目录不会阻塞后续命令。`STOP_WAIT_TIME` 按十进制秒数解析，也支持带前导零的值。
+
+When started as root, Java runs as the JAR owner by default; set `RUN_AS_USER` to select another account. On Linux, privilege dropping requires `setpriv` from `util-linux` (included in the Docker image), which preserves Java as PID 1 in foreground containers. The runtime user needs write access to the configured log locations.
+
+以 root 启动时，默认使用 JAR 所属用户运行 Java，可通过 `RUN_AS_USER` 指定其他用户。Linux 下切换用户需要 `util-linux` 提供的 `setpriv`（Docker 镜像已包含），使前台容器中的 Java 仍然是 PID 1。运行用户需要对配置的日志位置具有写权限。

@@ -20,7 +20,7 @@ EXPOSE 8070 8080
 
 # Install dependencies and set timezone and database defaults
 RUN apt-get update && \
-    apt-get install -y curl bash tzdata procps findutils && \
+    apt-get install -y curl bash tzdata procps findutils util-linux && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     # Set the timezone to Asia/Shanghai

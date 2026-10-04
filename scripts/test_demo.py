@@ -36,6 +36,7 @@ if sys.argv[1:] == ['-version']:
     sys.exit(0)
 root = pathlib.Path(os.environ['STUB_STATE_DIR'])
 def stop(signum, frame):
+    time.sleep(float(os.environ.get('STUB_JAVA_STOP_DELAY', '0')))
     (root / 'terminated').write_text(str(os.getpid()))
     sys.exit(0)
 signal.signal(signal.SIGTERM, stop)
@@ -173,6 +174,72 @@ raise SystemExit(1)
         self.assertEqual(int(self.pid_file.read_text()), self.calls()[0]['pid'])
         self.assertEqual(self.invoke('stop').returncode, 0)
 
+    def test_leftover_lock_directory_does_not_block_concurrent_starts(self) -> None:
+        (self.pid_file.parent / '.lock').mkdir(parents=True)
+        self.test_concurrent_starts_launch_one_java_process()
+
+    @unittest.skipIf(os.name == 'nt', 'uses Unix process-group signals')
+    def test_sigkill_releases_lock_without_losing_running_service(self) -> None:
+        self.assertEqual(self.invoke('start').returncode, 0)
+        actual_ps = shutil.which('ps')
+        self.write_executable('ps', f'''#!/usr/bin/env python3
+import os, pathlib, sys, time
+if os.environ.get('STUB_PS_BLOCK'):
+    pathlib.Path(os.environ['STUB_STATE_DIR'], 'lock-held').touch()
+    time.sleep(30)
+os.execv({actual_ps!r}, [{actual_ps!r}, *sys.argv[1:]])
+''')
+        process = subprocess.Popen([str(self.root / 'demo.sh'), 'stop'],
+                                   env=dict(self.env, STUB_PS_BLOCK='1'), start_new_session=True,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.processes.append(process)
+        deadline = time.monotonic() + 5
+        while not (self.root / 'lock-held').exists() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        self.assertTrue((self.root / 'lock-held').exists())
+        os.killpg(process.pid, signal.SIGKILL)
+        process.communicate(timeout=5)
+        self.assertEqual(process.returncode, -signal.SIGKILL)
+        self.assertTrue(self.pid_file.exists())
+        self.assertFalse((self.root / 'terminated').exists())
+        result = self.invoke('stop')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(self.pid_file.exists())
+
+    @unittest.skipIf(os.name == 'nt', 'uses Unix advisory locking')
+    def test_live_lock_is_not_reclaimed(self) -> None:
+        self.assertEqual(self.invoke('start').returncode, 0)
+        lock_file = self.pid_file.parent / '.lock/process.lock'
+        holder = subprocess.Popen([sys.executable, '-c', '''
+import fcntl, pathlib, sys, time
+with open(sys.argv[1], 'w') as lock:
+    fcntl.flock(lock, fcntl.LOCK_EX)
+    pathlib.Path(sys.argv[2]).touch()
+    time.sleep(30)
+''', str(lock_file), str(self.root / 'lock-held')])
+        self.processes.append(holder)
+        deadline = time.monotonic() + 5
+        while not (self.root / 'lock-held').exists() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        self.assertTrue((self.root / 'lock-held').exists())
+        result = self.invoke('stop')
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn('Cannot acquire service lock', result.stdout)
+        self.assertTrue(self.pid_file.exists())
+        self.assertFalse((self.root / 'terminated').exists())
+        holder.terminate()
+        holder.wait(timeout=5)
+        self.assertEqual(self.invoke('stop').returncode, 0)
+
+    def test_stop_timeout_with_leading_zeros_is_decimal(self) -> None:
+        for timeout, delay in [('010', '8.25'), ('08', '0.1'), ('09', '0.1')]:
+            with self.subTest(timeout=timeout):
+                self.env.update(STOP_WAIT_TIME=timeout, STUB_JAVA_STOP_DELAY=delay)
+                self.assertEqual(self.invoke('start').returncode, 0)
+                result = self.invoke('stop')
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertFalse(self.pid_file.exists())
+
     def test_invalid_option_quoting_is_rejected(self) -> None:
         self.env['JAVA_OPTS'] = '-Dexample="unterminated'
         result = self.invoke('run')
@@ -248,6 +315,33 @@ raise SystemExit(subprocess.call([{actual_ps!r}, '-p', str(win_pid - 1000000), '
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn('Required command not found: ps', result.stdout)
         self.assertFalse(self.calls())
+
+    def test_missing_lock_tools_is_rejected_before_starting_java(self) -> None:
+        self.env['PATH'] = str(self.bin)
+        for name in ('dirname', 'uname', 'ps'):
+            (self.bin / name).symlink_to(shutil.which(name))
+        result = self.invoke('start')
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn('Required command not found: flock or Perl', result.stdout)
+        self.assertFalse(self.calls())
+
+    def test_linux_privilege_drop_requires_setpriv_before_launch(self) -> None:
+        self.env.update(PATH=str(self.bin), RUN_AS_USER='apollo-run')
+        (self.bin / 'dirname').symlink_to(shutil.which('dirname'))
+        self.write_executable('uname', '#!/bin/bash\necho Linux\n')
+        self.write_executable('id', '#!/bin/bash\nif [[ $# == 1 ]]; then echo 0; else echo 1000; fi\n')
+        result = self.invoke('run')
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn('Required command not found: setpriv', result.stdout)
+        self.assertFalse(self.calls())
+
+    @unittest.skipUnless(shutil.which('perl'), 'requires Perl for the flock fallback')
+    def test_perl_lock_fallback_preserves_process_lifecycle(self) -> None:
+        self.env['PATH'] = str(self.bin)
+        for name in ('awk', 'cat', 'chown', 'dirname', 'grep', 'id', 'ls', 'mkdir',
+                     'nohup', 'perl', 'ps', 'python3', 'rm', 'sleep', 'touch', 'uname', 'xargs'):
+            (self.bin / name).symlink_to(shutil.which(name))
+        self.test_plain_jar_start_duplicate_start_and_graceful_stop()
 
     def test_run_execs_java_and_forwards_sigterm(self) -> None:
         process = subprocess.Popen([str(self.root / 'demo.sh'), 'run'], env=self.env,

@@ -123,6 +123,13 @@ function checkServiceTools {
       return 1
     }
   done
+  if ! command -v flock >/dev/null 2>&1; then
+    command -v perl >/dev/null 2>&1 || { echo "Required command not found: flock or Perl with native flock support"; return 1; }
+    perl -MConfig -e 'exit($Config{d_flock} eq "define" ? 0 : 1)' || {
+      echo "Background operation requires flock or Perl with native flock support."
+      return 1
+    }
+  fi
   if [[ "$windows" == "1" ]]; then
     command -v powershell.exe >/dev/null 2>&1 || { echo "Required command not found: powershell.exe"; return 1; }
   fi
@@ -130,7 +137,7 @@ function checkServiceTools {
 
 function switchServiceUser {
   local target_user=$RUN_AS_USER
-  local current_uid target_uid command
+  local current_uid target_uid target_gid command
   current_uid=$(id -u) || return 1
   if [[ -z "$target_user" && "$current_uid" == "0" && -f "$SERVICE_JAR" ]]; then
     target_user=$(ls -ld "$SERVICE_JAR" | awk '{print $3}')
@@ -139,10 +146,19 @@ function switchServiceUser {
   target_uid=$(id -u "$target_user") || return 1
   [[ "$target_uid" != "$current_uid" ]] || return 0
   [[ "$current_uid" == "0" ]] || { echo "Cannot run as $target_user: current user is not root."; return 1; }
-  command -v su >/dev/null 2>&1 || { echo "Required command not found: su"; return 1; }
+  if [[ "$(uname -s)" == "Linux" ]]; then
+    command -v setpriv >/dev/null 2>&1 || { echo "Required command not found: setpriv (util-linux)"; return 1; }
+    target_gid=$(id -g "$target_user") || return 1
+  else
+    command -v su >/dev/null 2>&1 || { echo "Required command not found: su"; return 1; }
+  fi
   mkdir -p "$SERVICE_PID_DIR" "$LOG_FOLDER" || return 1
   touch "$SERVICE_CONSOLE_LOG" || return 1
   chown "$target_user" "$SERVICE_PID_DIR" "$SERVICE_CONSOLE_LOG" || return 1
+  if [[ "$(uname -s)" == "Linux" ]]; then
+    # Replace the launcher instead of leaving su in front of Java with a 2s stop limit.
+    exec setpriv --reuid "$target_uid" --regid "$target_gid" --init-groups "$CURRENT_DIR/demo.sh" "$@"
+  fi
   printf -v command '%q ' "$CURRENT_DIR/demo.sh" "$@"
   if [[ "$(uname -s)" == "Darwin" ]]; then
     exec su -m "$target_user" -c "$command"
@@ -179,23 +195,35 @@ function checkJava {
 }
 
 function withServiceLock {
-  mkdir -p "$SERVICE_PID_DIR" || return 1
-  local counter=0
-  until mkdir "$SERVICE_LOCK" 2>/dev/null; do
-    if (( counter >= 10 )); then
-      echo "Cannot acquire service lock: $SERVICE_LOCK. Check for another start/stop command or a stale lock."
-      return 1
-    fi
-    sleep 1
-    (( counter++ ))
-  done
-  trap 'rmdir "$SERVICE_LOCK" 2>/dev/null' EXIT
-  trap 'exit 130' INT
-  trap 'exit 143' TERM
+  # Keep one stable inode, including when an old release left an empty .lock directory.
+  # The OS releases the advisory lock on exit, even after SIGKILL or a host restart.
+  mkdir -p "$SERVICE_LOCK" || return 1
+  exec 9>"$SERVICE_LOCK/process.lock" || return 1
+  local result
+  if command -v flock >/dev/null 2>&1; then
+    flock -w 10 9
+    result=$?
+  else
+    # macOS and MSYS/Cygwin provide Perl but may not provide the flock command.
+    # Native flock locks belong to the open file description shared with this shell.
+    perl -MFcntl=:flock -e '
+      open(my $lock, "<&=9") or die "Cannot open lock descriptor: $!\n";
+      for my $attempt (0..10) {
+        exit 0 if flock($lock, LOCK_EX | LOCK_NB);
+        sleep 1 if $attempt < 10;
+      }
+      exit 1;
+    '
+    result=$?
+  fi
+  if [[ "$result" != 0 ]]; then
+    exec 9>&-
+    echo "Cannot acquire service lock: $SERVICE_LOCK. Check for another start/stop command."
+    return 1
+  fi
   "$@"
-  local result=$?
-  rmdir "$SERVICE_LOCK" || return 1
-  trap - EXIT INT TERM
+  result=$?
+  exec 9>&-
   return "$result"
 }
 
@@ -237,7 +265,7 @@ function startService {
   mkdir -p "$SERVICE_PID_DIR" "$LOG_FOLDER" || return 1
   touch "$SERVICE_CONSOLE_LOG" || return 1
   nohup "$_java" "${SERVER_JAVA_OPTS[@]}" -jar "$SERVICE_JAR" "${SERVICE_ARGS[@]}" \
-    >> "$SERVICE_CONSOLE_LOG" 2>&1 < /dev/null &
+    >> "$SERVICE_CONSOLE_LOG" 2>&1 < /dev/null 9>&- &
   service_pid=$!
   if ! printf '%s\n' "$service_pid" > "$SERVICE_PID"; then
     kill "$service_pid" 2>/dev/null
@@ -256,6 +284,7 @@ function stopService {
     return $?
   fi
   [[ "$STOP_WAIT_TIME" =~ ^[0-9]+$ ]] || { echo "Invalid STOP_WAIT_TIME: $STOP_WAIT_TIME"; return 1; }
+  STOP_WAIT_TIME=$((10#$STOP_WAIT_TIME))
   kill "$pid" 2>/dev/null || return 1
   local counter
   for (( counter=0; counter<STOP_WAIT_TIME; counter++ )); do
