@@ -9,9 +9,9 @@ Apollo 3.0.0 需要 Java 17 或更高版本。`apollo-all-in-one.jar` 使用 [Gi
 
 `demo.sh` 使用 `java -jar` 启动 JAR。进程和日志默认值位于脚本的配置区，可通过 `PID_FOLDER`、`LOG_FOLDER`、`LOG_FILENAME`、`LOG_APPENDERS` 或 `STOP_WAIT_TIME` 环境变量覆盖。使用 `./demo.sh start` / `./demo.sh stop` 在后台启动和停止服务，或使用 `./demo.sh run` 在前台运行。Docker 镜像采用前台运行方式，使 Java 能收到容器停止信号。发布同步流程直接复制上游 JAR，保持其内容不变。
 
-`JAVA_OPTS` and `RUN_ARGS` retain the old launcher's whitespace-separated option format, for example `JAVA_OPTS='-Xms128m -Xmx512m'`. Quotes inside these variables are passed literally. Run background `start` and `stop` commands sequentially; they check whether the recorded PID exists, as the old launcher did. Startup continues to poll the Portal endpoint for up to 120 seconds. `STOP_WAIT_TIME` is interpreted as decimal seconds, including values with leading zeros.
+`JAVA_OPTS` and `RUN_ARGS` retain the old launcher's whitespace-separated option format, for example `JAVA_OPTS='-Xms128m -Xmx512m'`. Quotes inside these variables are passed literally. Run background `start` and `stop` commands sequentially. On Linux/macOS, the recorded PID must match this Apollo JAR, and zombie processes count as stopped; Git Bash/Cygwin retains the old PID-existence check. Startup continues to poll the Portal endpoint for up to 120 seconds. `STOP_WAIT_TIME` is interpreted as decimal seconds, including values with leading zeros.
 
-`JAVA_OPTS` 和 `RUN_ARGS` 延续旧启动器按空白分隔参数的格式，例如 `JAVA_OPTS='-Xms128m -Xmx512m'`；变量内部的引号会按原样传递。后台 `start` 和 `stop` 命令应顺序执行，和旧启动器一样通过记录的 PID 是否存在判断进程状态。启动时继续等待 Portal HTTP 响应，最长 120 秒。`STOP_WAIT_TIME` 按十进制秒数解析，也支持带前导零的值。
+`JAVA_OPTS` 和 `RUN_ARGS` 延续旧启动器按空白分隔参数的格式，例如 `JAVA_OPTS='-Xms128m -Xmx512m'`；变量内部的引号会按原样传递。后台 `start` 和 `stop` 命令应顺序执行。Linux/macOS 会确认记录的 PID 对应当前 Apollo JAR，并将僵尸进程视为已停止；Git Bash/Cygwin 延续旧版仅检查 PID 是否存在的方式。启动时继续等待 Portal HTTP 响应，最长 120 秒。`STOP_WAIT_TIME` 按十进制秒数解析，也支持带前导零的值。
 
 Background operation requires `ps` and `curl`. When started as root, Java runs as the JAR owner by default; set `RUN_AS_USER` to select another account. Background startup uses `su`; Linux foreground privilege dropping uses `setpriv` from `util-linux` (included in the Docker image) to preserve Java as PID 1. The runtime user needs write access to the configured log locations.
 

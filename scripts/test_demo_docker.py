@@ -82,6 +82,31 @@ while :; do sleep .1; done
         self.assert_graceful_stop(65534, '--entrypoint', '/bin/bash', command=(
             '-c', 'chown nobody /apollo-quick-start/apollo-all-in-one.jar; exec /apollo-quick-start/demo.sh run'))
 
+    def test_background_stop_accepts_a_zombie_under_non_reaping_pid_one(self) -> None:
+        curl = self.root / 'bin/curl'
+        curl.write_text('#!/bin/bash\necho "HTTP/1.1 200 OK"\n')
+        curl.chmod(0o755)
+        self.docker('run', '-d', '--name', self.container, '--network', 'none',
+                    '-v', f'{self.root}:/signal-test:ro', '-e', 'JAVA_HOME=/signal-test',
+                    '-e', 'PATH=/signal-test/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+                    '-e', 'STOP_WAIT_TIME=10', '--entrypoint', '/bin/sleep', IMAGE, 'infinity')
+        script = '/apollo-quick-start/demo.sh'
+        pid_file = '/apollo-quick-start/apollo-service/apollo-service.pid'
+        self.docker('exec', self.container, script, 'start')
+        pid = self.docker('exec', self.container, 'cat', pid_file).strip()
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            if f'READY pid={pid}' in self.docker('exec', self.container, 'cat', '/apollo-quick-start/console.log'):
+                break
+            time.sleep(0.1)
+        else:
+            self.fail('Background Java did not become ready')
+        self.assertIn('Stopped', self.docker('exec', self.container, script, 'stop'))
+        state = self.docker('exec', self.container, 'ps', '-p', pid, '-o', 'stat=').strip()
+        self.assertTrue(state.startswith('Z'), state)
+        self.docker('exec', self.container, 'test', '!', '-e', pid_file)
+        self.assertIn('SHUTDOWN_COMPLETED', self.docker('exec', self.container, 'cat', '/apollo-quick-start/console.log'))
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -154,7 +154,16 @@ function checkJava {
 }
 
 function isServiceRunning {
-  [[ "$1" =~ ^[1-9][0-9]*$ ]] && ps -p "$1" > /dev/null 2>&1
+  [[ "$1" =~ ^[1-9][0-9]*$ ]] || return 1
+  if [[ "$windows" == "1" ]]; then
+    # Git Bash/Cygwin ps does not support the Unix output fields below.
+    ps -p "$1" > /dev/null 2>&1
+    return $?
+  fi
+  local state command
+  read -r state command < <(ps -ww -p "$1" -o stat= -o args= 2>/dev/null) || return 1
+  # A reused PID or an exited, unreaped JVM is not the running service.
+  [[ "$state" != Z* && "$command" == *java* && " $command " == *" -jar $SERVICE_JAR "* ]]
 }
 
 function startService {

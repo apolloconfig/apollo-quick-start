@@ -161,6 +161,38 @@ raise SystemExit(1)
         self.assertEqual(int(self.pid_file.read_text()), self.wait_for_call()['pid'])
         self.assertEqual(self.invoke('stop').returncode, 0)
 
+    def test_stop_does_not_signal_an_unrelated_live_pid(self) -> None:
+        for command in (['sleep', '60'],
+                        [str(self.bin / 'java'), '-jar', str(self.root / 'apollo-all-in-one.jar.backup')]):
+            with self.subTest(command=command):
+                unrelated = subprocess.Popen(command, env=self.env, stdout=subprocess.DEVNULL)
+                self.processes.append(unrelated)
+                if command[0] != 'sleep':
+                    self.wait_for_call()
+                self.pid_file.parent.mkdir(exist_ok=True)
+                self.pid_file.write_text(str(unrelated.pid) + '\n')
+                self.env['STOP_WAIT_TIME'] = '2'
+                result = self.invoke('stop')
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIsNone(unrelated.poll())
+                self.assertFalse(self.pid_file.exists())
+                unrelated.terminate()
+                unrelated.wait(timeout=5)
+
+    def test_start_replaces_an_unrelated_live_pid(self) -> None:
+        unrelated = subprocess.Popen(['sleep', '60'])
+        self.processes.append(unrelated)
+        self.pid_file.parent.mkdir()
+        self.pid_file.write_text(str(unrelated.pid) + '\n')
+        # Avoid the legacy HTTP wait if the old PID-only check regresses.
+        self.write_executable('curl', '#!/bin/bash\necho "HTTP/1.1 200 OK"\n')
+        result = self.invoke('start')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn('Already running', result.stdout)
+        self.assertEqual(int(self.pid_file.read_text()), self.wait_for_call()['pid'])
+        self.assertIsNone(unrelated.poll())
+        self.assertEqual(self.invoke('stop').returncode, 0)
+
     def test_stop_timeout_with_leading_zeros_is_decimal(self) -> None:
         for timeout, delay in [('010', '8.25'), ('08', '0.1'), ('09', '0.1')]:
             with self.subTest(timeout=timeout):
