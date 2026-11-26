@@ -26,8 +26,6 @@ jobs:
 
       - name: Checkout apollo-quick-start
         uses: actions/checkout@v4
-        with:
-          lfs: true
 
       - name: Checkout Apollo release source
         uses: actions/checkout@v4
@@ -37,40 +35,10 @@ jobs:
           path: apollo-source
           fetch-depth: 1
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-          cache: maven
-
-      - name: Build Apollo assembly
-        working-directory: apollo-source
-        run: ./mvnw -B -pl apollo-assembly -am -DskipTests=true package
-
-      - name: Sync release assets
+      - name: Sync version and SQL
         run: |
           set -euo pipefail
-
-          JAR_PATH=""
-          for candidate in apollo-source/apollo-assembly/target/apollo-assembly-*.jar; do
-            if [[ "${candidate}" == *"-sources.jar" || "${candidate}" == *"-javadoc.jar" || "${candidate}" == *".jar.original" ]]; then
-              continue
-            fi
-            if [[ -f "${candidate}" ]]; then
-              JAR_PATH="${candidate}"
-              break
-            fi
-          done
-
-          if [[ -z "${JAR_PATH}" ]]; then
-            echo "No runnable apollo-assembly jar found under apollo-source/apollo-assembly/target" >&2
-            exit 1
-          fi
-
-          cp "${JAR_PATH}" apollo-all-in-one.jar
-          chmod 644 apollo-all-in-one.jar
-
+          printf '%s\n' "$RELEASE_VERSION" > VERSION
           python3 scripts/sync_from_apollo_release.py \
             --apollo-repo-root "${GITHUB_WORKSPACE}/apollo-source" \
             --quick-start-root "${GITHUB_WORKSPACE}"
@@ -85,7 +53,7 @@ jobs:
         run: |
           set -euo pipefail
           git status --short
-          if git diff --quiet -- apollo-all-in-one.jar sql/apolloconfigdb.sql sql/apolloportaldb.sql; then
+          if git diff --quiet -- VERSION sql/apolloconfigdb.sql sql/apolloportaldb.sql; then
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
           else
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
@@ -107,16 +75,15 @@ jobs:
           title: "chore(release): sync quick start assets to ${{ env.RELEASE_VERSION }}"
           body: |
             ## Summary
-            - sync `apollo-all-in-one.jar` from `apolloconfig/apollo@v${{ env.RELEASE_VERSION }}`
+            - record the Apollo version from `apolloconfig/apollo@v${{ env.RELEASE_VERSION }}`
             - sync `sql/apolloconfigdb.sql` and `sql/apolloportaldb.sql` from Apollo release SQL
             - inject quick-start sample data overlays
             - keep `configView.memberOnly.envs` fixed to `dev`
 
             ## Source
             - Apollo tag: `v${{ env.RELEASE_VERSION }}`
-            - Build command: `./mvnw -B -pl apollo-assembly -am -DskipTests=true package`
           add-paths: |
-            apollo-all-in-one.jar
+            VERSION
             sql/apolloconfigdb.sql
             sql/apolloportaldb.sql
 

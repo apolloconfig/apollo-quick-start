@@ -22,6 +22,8 @@ target
 *.orig
 
 # build related
+/apollo-all-in-one.jar
+/dist/
 apollo-portal.jar
 apollo-service.jar
 *.log
