@@ -34,22 +34,16 @@ jobs:
       - name: Resolve release and image tags
         id: release
         shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
-          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          [[ -z "$DOCKER_TAG" || "$DOCKER_TAG" =~ ^[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}$ ]]
-          if [[ "$DOCKER_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && "$DOCKER_TAG" != "$VERSION" ]]; then
-            echo "::error::A versioned image tag must match the release version"
-            exit 1
-          fi
+          git fetch --tags origin "refs/heads/$DEFAULT_BRANCH"
+          current_version=$(git show FETCH_HEAD:VERSION)
+          tags=$(python3 scripts/docker_tags.py "$VERSION" "$DOCKER_TAG" "$current_version")
+          echo "tags=$tags" >> "$GITHUB_OUTPUT"
           name="apollo-quick-start-$VERSION"
           echo "NAME=$name" >> "$GITHUB_ENV"
-          image=nobodyiam/apollo-quick-start
-          tags="$image:$VERSION,$image:latest"
-          if [[ -n "$DOCKER_TAG" && "$DOCKER_TAG" != latest && "$DOCKER_TAG" != "$VERSION" ]]; then
-            tags="$tags,$image:$DOCKER_TAG"
-          fi
-          echo "tags=$tags" >> "$GITHUB_OUTPUT"
 
           mkdir -p dist
           ref="$GITHUB_SHA"
